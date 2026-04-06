@@ -500,6 +500,9 @@
 @interface IGDirectMessageSenderFeatureController : NSObject
 @end
 
+@interface MDCoreDelta : NSObject
+@end
+
 @interface IGTabBarButton : UIButton
 - (void)addHandleLongPress; // new
 @end

@@ -139,10 +139,31 @@
                                         navSections:@[@{
                                             @"header": @"Messages",
                                             @"rows": @[
-                                                [SCISetting switchCellWithTitle:@"Keep deleted messages" subtitle:@"Saves deleted messages in chat conversations" defaultsKey:@"keep_deleted_message"],
-                                                [SCISetting switchCellWithTitle:@"Manually mark messages as seen" subtitle:@"Adds a button to DM threads, which will mark messages as seen" defaultsKey:@"remove_lastseen"],
-                                                [SCISetting menuCellWithTitle:@"Read receipt mode" subtitle:@"How the seen button behaves" menu:[self menus][@"seen_mode"]],
-                                                [SCISetting switchCellWithTitle:@"Auto: mark seen on interact" subtitle:@"Locally marks messages as seen when you send a message or react" defaultsKey:@"seen_auto_on_interact"],
+                                                [SCISetting navigationCellWithTitle:@"Keep deleted messages"
+                                                                           subtitle:@"Preserve messages that others unsend"
+                                                                               icon:nil
+                                                                        navSections:@[@{
+                                                                            @"header": @"",
+                                                                            @"footer": @"Pull to refresh in the messages tab will remove preserved messages",
+                                                                            @"rows": @[
+                                                                                [SCISetting switchCellWithTitle:@"Keep deleted messages" subtitle:@"Preserves messages that others unsend" defaultsKey:@"keep_deleted_message"],
+                                                                                [SCISetting switchCellWithTitle:@"Indicate unsent messages" subtitle:@"Shows an \"Unsent\" label on preserved messages" defaultsKey:@"indicate_unsent_messages"],
+                                                                                [SCISetting switchCellWithTitle:@"Unsent message notification" subtitle:@"Shows a notification pill when a message is unsent" defaultsKey:@"unsent_message_toast"],
+                                                                            ]
+                                                                        }]
+                                                ],
+                                                [SCISetting navigationCellWithTitle:@"Read receipts"
+                                                                           subtitle:@"Control when messages are marked as seen"
+                                                                               icon:nil
+                                                                        navSections:@[@{
+                                                                            @"header": @"",
+                                                                            @"rows": @[
+                                                                                [SCISetting switchCellWithTitle:@"Manually mark messages as seen" subtitle:@"Adds a button to DM threads to mark messages as seen" defaultsKey:@"remove_lastseen"],
+                                                                                [SCISetting menuCellWithTitle:@"Read receipt mode" subtitle:@"How the seen button behaves" menu:[self menus][@"seen_mode"]],
+                                                                                [SCISetting switchCellWithTitle:@"Auto mark seen on interact" subtitle:@"Locally marks messages as seen when you send any message" defaultsKey:@"seen_auto_on_interact"],
+                                                                            ]
+                                                                        }]
+                                                ],
                                                 [SCISetting switchCellWithTitle:@"Disable typing status" subtitle:@"Prevents the typing indicator from being shown to others when you're typing in DMs" defaultsKey:@"disable_typing_status"],
                                                 [SCISetting switchCellWithTitle:@"Send audio as file" subtitle:@"Adds an 'Audio File' option to the plus menu in DMs to send audio files as voice messages" defaultsKey:@"send_audio_as_file"],
                                             ]

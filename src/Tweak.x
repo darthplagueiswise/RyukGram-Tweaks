@@ -49,7 +49,9 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"send_audio_as_file": @(YES),
         @"unlock_password_reels": @(YES),
         @"seen_mode": @"button",
-        @"seen_auto_on_interact": @(YES)
+        @"seen_auto_on_interact": @(YES),
+        @"indicate_unsent_messages": @(NO),
+        @"unsent_message_toast": @(NO)
     };
     [[NSUserDefaults standardUserDefaults] registerDefaults:sciDefaults];
     

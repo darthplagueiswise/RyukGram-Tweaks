@@ -78,9 +78,10 @@ A feature-rich iOS tweak for Instagram, forked from [SCInsta](https://github.com
 - *Customize hold time for long-press*
 
 ### Stories and messages
-- Keep deleted messages
+- Keep deleted messages (preserves unsent messages with visual indicator and notification pill) **\***
 - Manually mark messages as seen (button or toggle mode) **\***
 - Auto mark seen on send (marks messages as read when you send any message) **\***
+- Send audio as file — send audio files as voice messages from the DM plus menu **\***
 - Disable typing status
 - Unlimited replay of direct stories
 - Disable view-once limitations
@@ -119,6 +120,9 @@ A feature-rich iOS tweak for Instagram, forked from [SCInsta](https://github.com
 
 ### Optimization
 - Automatically clears unneeded cache folders, reducing the size of your Instagram installation
+
+## Known Issues
+- Preserved unsent messages cannot be removed using "Delete for you". Pull to refresh in the DMs tab clears all preserved messages as a workaround.
 
 # Opening Tweak Settings
 
