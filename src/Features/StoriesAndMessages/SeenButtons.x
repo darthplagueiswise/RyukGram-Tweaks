@@ -12,6 +12,7 @@
 
 BOOL dmSeenToggleEnabled = NO;
 static BOOL sciSeenAutoBypass = NO;
+__weak IGDirectThreadViewController *sciActiveThreadVC = nil;
 
 static BOOL sciIsSeenToggleMode() {
     return [[SCIUtils getStringPref:@"seen_mode"] isEqualToString:@"toggle"];
@@ -21,7 +22,11 @@ static BOOL sciAutoInteractEnabled() {
     return [SCIUtils getBoolPref:@"remove_lastseen"] && [SCIUtils getBoolPref:@"seen_auto_on_interact"];
 }
 
-static void sciDoAutoSeen(IGDirectThreadViewController *threadVC) {
+BOOL sciAutoTypingEnabled() {
+    return [SCIUtils getBoolPref:@"remove_lastseen"] && [SCIUtils getBoolPref:@"seen_auto_on_typing"];
+}
+
+void sciDoAutoSeen(IGDirectThreadViewController *threadVC) {
     sciSeenAutoBypass = YES;
     [threadVC markLastMessageAsSeen];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -39,6 +44,21 @@ static void new_setHasSent(id self, SEL _cmd, BOOL sent) {
         sciDoAutoSeen((IGDirectThreadViewController *)self);
     });
 }
+
+// ============ AUTO SEEN ON TYPING ============
+// Tracks the visible thread VC so the typing-service hook (in
+// DisableTypingStatus.x) can mark its messages as seen.
+
+%hook IGDirectThreadViewController
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    sciActiveThreadVC = self;
+}
+- (void)viewWillDisappear:(BOOL)animated {
+    if (sciActiveThreadVC == self) sciActiveThreadVC = nil;
+    %orig;
+}
+%end
 
 // ============ NAV BAR BUTTONS ============
 

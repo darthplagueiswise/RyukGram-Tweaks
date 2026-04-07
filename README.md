@@ -71,6 +71,7 @@ A feature-rich iOS tweak for Instagram, forked from [SCInsta](https://github.com
 - Download buttons on media — tap a button directly on feed posts, reels sidebar, and story overlay **\***
 - Download method — choose between download button or long-press gesture **\***
 - Save action — choose between share sheet or save directly to Photos **\***
+- Save to RyukGram album — optional toggle that routes downloads (and share-sheet "Save to Photos" picks) into a dedicated "RyukGram" album in Photos **\***
 - Download confirmation — optional confirmation dialog before downloading **\***
 - Non-blocking download HUD — pill-style progress at the top, tap to cancel **\***
 - Debug fallback — if IG updates break downloads, shows diagnostic info instead of crashing **\***
@@ -79,8 +80,11 @@ A feature-rich iOS tweak for Instagram, forked from [SCInsta](https://github.com
 
 ### Stories and messages
 - Keep deleted messages (preserves unsent messages with visual indicator and notification pill) **\***
+- Hide trailing action buttons on preserved messages
+- Warn before clearing on refresh — optional confirmation when pulling to refresh the DMs tab if preserved messages would be cleared **\***
 - Manually mark messages as seen (button or toggle mode) **\***
 - Auto mark seen on send (marks messages as read when you send any message) **\***
+- Auto mark seen on typing (marks messages as read the moment you start typing, even when typing status is hidden) **\***
 - Send audio as file — send audio files as voice messages from the DM plus menu **\***
 - Download voice messages — adds a Download option to the long-press menu on voice messages, saves as M4A via share sheet **\***
 - Disable typing status
@@ -123,7 +127,7 @@ A feature-rich iOS tweak for Instagram, forked from [SCInsta](https://github.com
 - Automatically clears unneeded cache folders, reducing the size of your Instagram installation
 
 ## Known Issues
-- Preserved unsent messages cannot be removed using "Delete for you". Pull to refresh in the DMs tab clears all preserved messages as a workaround.
+- Preserved unsent messages cannot be removed using "Delete for you". Pull to refresh in the DMs tab clears all preserved messages (with optional confirmation if "Warn before clearing on refresh" is enabled).
 
 # Opening Tweak Settings
 

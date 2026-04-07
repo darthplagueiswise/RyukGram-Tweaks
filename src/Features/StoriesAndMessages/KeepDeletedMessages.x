@@ -33,7 +33,7 @@ static NSMutableSet *sciPreservedIds = nil;
 #define SCI_PRESERVED_MAX 200
 #define SCI_PRESERVED_TAG 1399
 
-static NSMutableSet *sciGetPreservedIds() {
+NSMutableSet *sciGetPreservedIds() {
     if (!sciPreservedIds) {
         NSArray *saved = [[NSUserDefaults standardUserDefaults] arrayForKey:SCI_PRESERVED_IDS_KEY];
         sciPreservedIds = saved ? [NSMutableSet setWithArray:saved] : [NSMutableSet set];
@@ -48,7 +48,7 @@ static void sciSavePreservedIds() {
     [[NSUserDefaults standardUserDefaults] setObject:[ids allObjects] forKey:SCI_PRESERVED_IDS_KEY];
 }
 
-static void sciClearPreservedIds() {
+void sciClearPreservedIds() {
     [sciGetPreservedIds() removeAllObjects];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:SCI_PRESERVED_IDS_KEY];
 }

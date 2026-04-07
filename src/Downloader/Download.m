@@ -1,4 +1,5 @@
 #import "Download.h"
+#import "../PhotoAlbum.h"
 #import <Photos/Photos.h>
 
 #pragma mark - SCIDownloadPillView
@@ -217,30 +218,14 @@
                         return;
                     }
 
-                    [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
-                        NSString *ext = [[fileURL pathExtension] lowercaseString];
-                        BOOL isVideo = [@[@"mp4", @"mov", @"m4v"] containsObject:ext];
-
-                        if (isVideo) {
-                            PHAssetCreationRequest *req = [PHAssetCreationRequest creationRequestForAsset];
-                            PHAssetResourceCreationOptions *opts = [[PHAssetResourceCreationOptions alloc] init];
-                            opts.shouldMoveFile = YES;
-                            [req addResourceWithType:PHAssetResourceTypeVideo fileURL:fileURL options:opts];
-                            req.creationDate = [NSDate date];
-                        } else {
-                            PHAssetCreationRequest *req = [PHAssetCreationRequest creationRequestForAsset];
-                            PHAssetResourceCreationOptions *opts = [[PHAssetResourceCreationOptions alloc] init];
-                            opts.shouldMoveFile = YES;
-                            [req addResourceWithType:PHAssetResourceTypePhoto fileURL:fileURL options:opts];
-                            req.creationDate = [NSDate date];
-                        }
-                    } completionHandler:^(BOOL success, NSError *error) {
+                    BOOL useAlbum = [SCIUtils getBoolPref:@"save_to_ryukgram_album"];
+                    void (^onDone)(BOOL, NSError *) = ^(BOOL success, NSError *error) {
                         dispatch_async(dispatch_get_main_queue(), ^{
                             if (success) {
                                 SCIDownloadPillView *donePill = [[SCIDownloadPillView alloc] init];
                                 donePill.progressRing.hidden = YES;
                                 donePill.subtitleLabel.text = nil;
-                                [donePill setText:@"Saved to Photos"];
+                                [donePill setText:useAlbum ? @"Saved to RyukGram" : @"Saved to Photos"];
                                 UIView *hostView = topMostController().view;
                                 if (hostView) {
                                     [donePill showInView:hostView];
@@ -250,7 +235,22 @@
                                 [SCIUtils showErrorHUDWithDescription:@"Failed to save to Photos"];
                             }
                         });
-                    }];
+                    };
+
+                    if (useAlbum) {
+                        [SCIPhotoAlbum saveFileToAlbum:fileURL completion:onDone];
+                    } else {
+                        [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+                            NSString *ext = [[fileURL pathExtension] lowercaseString];
+                            BOOL isVideo = [@[@"mp4", @"mov", @"m4v"] containsObject:ext];
+                            PHAssetCreationRequest *req = [PHAssetCreationRequest creationRequestForAsset];
+                            PHAssetResourceCreationOptions *opts = [[PHAssetResourceCreationOptions alloc] init];
+                            opts.shouldMoveFile = YES;
+                            [req addResourceWithType:(isVideo ? PHAssetResourceTypeVideo : PHAssetResourceTypePhoto)
+                                             fileURL:fileURL options:opts];
+                            req.creationDate = [NSDate date];
+                        } completionHandler:onDone];
+                    }
                 }];
                 break;
             }

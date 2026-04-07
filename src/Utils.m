@@ -1,4 +1,5 @@
 #import "Utils.h"
+#import "PhotoAlbum.h"
 
 @implementation SCIUtils
 
@@ -99,6 +100,13 @@
         acVC.popoverPresentationController.sourceView = topVC.view;
         acVC.popoverPresentationController.sourceRect = CGRectMake(topVC.view.bounds.size.width / 2.0, topVC.view.bounds.size.height / 2.0, 1.0, 1.0);
     }
+
+    // If the user picks "Save to Photos" from the share sheet, route the new
+    // asset into the RyukGram album via a one-shot photo library observer.
+    if ([self getBoolPref:@"save_to_ryukgram_album"]) {
+        [SCIPhotoAlbum watchForNextSavedAsset];
+    }
+
     [topVC presentViewController:acVC animated:true completion:nil];
 }
 + (void)showSettingsVC:(UIWindow *)window {

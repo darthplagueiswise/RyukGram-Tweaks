@@ -118,10 +118,12 @@
                                         },
                                         @{
                                             @"header": @"Download method",
+                                            @"footer": @"When \"Save to RyukGram album\" is on, downloads and share-sheet \"Save to Photos\" picks are routed into a dedicated \"RyukGram\" album in your Photos library.",
                                             @"rows": @[
                                                 [SCISetting menuCellWithTitle:@"Download method" subtitle:@"How to trigger downloads" menu:[self menus][@"dw_method"]],
                                                 [SCISetting menuCellWithTitle:@"Save action" subtitle:@"What happens after downloading" menu:[self menus][@"dw_save_action"]],
-                                                [SCISetting switchCellWithTitle:@"Confirm before download" subtitle:@"Show a confirmation dialog before starting a download" defaultsKey:@"dw_confirm"]
+                                                [SCISetting switchCellWithTitle:@"Confirm before download" subtitle:@"Show a confirmation dialog before starting a download" defaultsKey:@"dw_confirm"],
+                                                [SCISetting switchCellWithTitle:@"Save to RyukGram album" subtitle:@"Route saves into a dedicated album in Photos instead of the camera roll root" defaultsKey:@"save_to_ryukgram_album"]
                                             ]
                                         },
                                         @{
@@ -144,11 +146,12 @@
                                                                                icon:nil
                                                                         navSections:@[@{
                                                                             @"header": @"",
-                                                                            @"footer": @"Pull to refresh in the messages tab will remove preserved messages",
+                                                                            @"footer": @"⚠️ WARNING: Pull-to-refresh in the DMs tab CLEARS all preserved messages. Enable \"Warn before clearing on refresh\" below to get a confirmation dialog before this happens.",
                                                                             @"rows": @[
                                                                                 [SCISetting switchCellWithTitle:@"Keep deleted messages" subtitle:@"Preserves messages that others unsend" defaultsKey:@"keep_deleted_message"],
                                                                                 [SCISetting switchCellWithTitle:@"Indicate unsent messages" subtitle:@"Shows an \"Unsent\" label on preserved messages" defaultsKey:@"indicate_unsent_messages"],
                                                                                 [SCISetting switchCellWithTitle:@"Unsent message notification" subtitle:@"Shows a notification pill when a message is unsent" defaultsKey:@"unsent_message_toast"],
+                                                                                [SCISetting switchCellWithTitle:@"Warn before clearing on refresh" subtitle:@"Show a confirmation dialog when pulling to refresh the DMs tab if preserved messages would be cleared" defaultsKey:@"warn_refresh_clears_preserved"],
                                                                             ]
                                                                         }]
                                                 ],
@@ -161,6 +164,7 @@
                                                                                 [SCISetting switchCellWithTitle:@"Manually mark messages as seen" subtitle:@"Adds a button to DM threads to mark messages as seen" defaultsKey:@"remove_lastseen"],
                                                                                 [SCISetting menuCellWithTitle:@"Read receipt mode" subtitle:@"How the seen button behaves" menu:[self menus][@"seen_mode"]],
                                                                                 [SCISetting switchCellWithTitle:@"Auto mark seen on interact" subtitle:@"Locally marks messages as seen when you send any message" defaultsKey:@"seen_auto_on_interact"],
+                                                                                [SCISetting switchCellWithTitle:@"Auto mark seen on typing" subtitle:@"Marks messages as seen the moment you start typing in a DM (works even when typing status is hidden)" defaultsKey:@"seen_auto_on_typing"],
                                                                             ]
                                                                         }]
                                                 ],

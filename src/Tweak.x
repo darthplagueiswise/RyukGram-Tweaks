@@ -48,11 +48,14 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"no_seen_visual": @(YES),
         @"send_audio_as_file": @(YES),
         @"download_audio_message": @(NO),
+        @"save_to_ryukgram_album": @(NO),
         @"unlock_password_reels": @(YES),
         @"seen_mode": @"button",
         @"seen_auto_on_interact": @(NO),
+        @"seen_auto_on_typing": @(NO),
         @"indicate_unsent_messages": @(NO),
-        @"unsent_message_toast": @(NO)
+        @"unsent_message_toast": @(NO),
+        @"warn_refresh_clears_preserved": @(NO)
     };
     [[NSUserDefaults standardUserDefaults] registerDefaults:sciDefaults];
     

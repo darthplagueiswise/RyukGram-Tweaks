@@ -140,13 +140,7 @@ static id new_prismMenuView_init3(id self, SEL _cmd, NSArray *elements, id heade
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [pill setText:@"Done!"];
                     [pill dismissAfterDelay:0.5];
-
-                    UIActivityViewController *shareVC = [[UIActivityViewController alloc]
-                        initWithActivityItems:@[finalURL]
-                        applicationActivities:nil];
-                    UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
-                    while (top.presentedViewController) top = top.presentedViewController;
-                    [top presentViewController:shareVC animated:YES completion:nil];
+                    [SCIUtils showShareVC:finalURL];
                 });
             }];
         }];
