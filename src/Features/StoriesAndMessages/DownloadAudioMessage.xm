@@ -1,8 +1,8 @@
-// Download voice messages from DMs
-// Hooks IGDirectMessageMenuConfiguration to detect audio messages, then injects a "Download"
-// item into the IGDSPrismMenuView long-press menu. Downloads the audio via the playbackURL
-// on IGAudio (accessed through vm -> audio -> _server_audio), converts mp4 to m4a, and
-// presents a share sheet.
+// Download voice messages from DMs. Detects audio messages via the
+// menuConfiguration hook, then injects a Download item into the long-press
+// PrismMenu. Tries to convert to .m4a; falls back to the source extension
+// (e.g. .ogg from web users) if AVFoundation can't decode the format.
+
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 #import <objc/runtime.h>
@@ -17,11 +17,8 @@ static inline id sciDAF(id obj, SEL sel) {
     return ((SCIMsgSendId)objc_msgSend)(obj, sel);
 }
 
-// Flag set by menuConfig hook when a voice_media menu is about to be created
 static BOOL sciAudioMenuPending = NO;
 static id sciLastAudioViewModel = nil;
-
-#pragma mark - Detect audio message long-press
 
 // Demangled: IGDirectMessageMenuConfiguration.IGDirectMessageMenuConfiguration
 %hook _TtC32IGDirectMessageMenuConfiguration32IGDirectMessageMenuConfiguration
@@ -47,10 +44,7 @@ static id sciLastAudioViewModel = nil;
 
 %end
 
-#pragma mark - Inject Download item into PrismMenu
-
-// PrismMenu uses Swift classes — must use MSHookMessageEx with runtime class lookup
-// (dot-notation names like liquid glass hooks in Tweak.x)
+// PrismMenu uses Swift classes with mangled names — hook via MSHookMessageEx in %ctor.
 
 static id (*orig_prismMenuView_init3)(id, SEL, NSArray *, id, BOOL);
 
@@ -74,7 +68,7 @@ static id new_prismMenuView_init3(id self, SEL _cmd, NSArray *elements, id heade
     void (^handler)(void) = ^{
         if (!capturedVM) return;
 
-        // Audio URL path: vm -> audio (IGDirectAudio) -> _server_audio (IGAudio) -> playbackURL
+        // vm -> audio (IGDirectAudio) -> _server_audio (IGAudio) -> playbackURL
         id directAudio = nil;
         @try { directAudio = [capturedVM valueForKey:@"audio"]; } @catch (NSException *e) {}
         if (!directAudio) {
@@ -112,9 +106,7 @@ static id new_prismMenuView_init3(id self, SEL _cmd, NSArray *elements, id heade
                 return;
             }
 
-            // Always try to convert to .m4a via AVFoundation. If that fails (e.g. Ogg/Opus
-            // from PC/web users — iOS has no decoder), fall back to keeping the original
-            // extension from the URL so the share sheet still treats it as audio.
+            // Try to convert to .m4a; on failure (e.g. Ogg/Opus) keep the source extension.
             NSString *urlExt = [[playbackURL.path pathExtension] lowercaseString];
             if (urlExt.length == 0) urlExt = @"m4a";
 
@@ -150,7 +142,7 @@ static id new_prismMenuView_init3(id self, SEL _cmd, NSArray *elements, id heade
                     present(m4aURL);
                     return;
                 }
-                // Conversion failed — keep the original file with its real extension.
+                // Conversion failed — keep the original with its real extension.
                 [[NSFileManager defaultManager] removeItemAtURL:m4aURL error:nil];
                 NSString *outPath = [NSTemporaryDirectory() stringByAppendingPathComponent:
                     [NSString stringWithFormat:@"audio_%@.%@", mediaId, urlExt]];
@@ -166,14 +158,13 @@ static id new_prismMenuView_init3(id self, SEL _cmd, NSArray *elements, id heade
         [task resume];
     };
 
-    // Build menu item via IGDSPrismMenuItemBuilder
     id builder = ((InitFn)objc_msgSend)([builderClass alloc], @selector(initWithTitle:), @"Download");
     builder = ((WithFn)objc_msgSend)(builder, @selector(withImage:), [UIImage systemImageNamed:@"arrow.down.circle"]);
     builder = ((WithFn)objc_msgSend)(builder, @selector(withHandler:), handler);
     id menuItem = ((BuildFn)objc_msgSend)(builder, @selector(build));
     if (!menuItem) return orig_prismMenuView_init3(self, _cmd, elements, header, edr);
 
-    // Wrap in IGDSPrismMenuElement (copy _subtype from existing element, set _item_menuItem)
+    // Wrap in IGDSPrismMenuElement: clone _subtype from a sibling, attach the menuItem.
     id templateEl = elements[0];
     id newElement = [[templateEl class] new];
     Ivar subtypeIvar = class_getInstanceVariable([templateEl class], "_subtype");

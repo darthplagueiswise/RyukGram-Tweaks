@@ -33,6 +33,7 @@
 + (void)showQuickLookVC:(NSArray<id> *)items;
 + (void)showShareVC:(id)item;
 + (void)showSettingsVC:(UIWindow *)window;
++ (void)showSettingsVC:(UIWindow *)window atTopLevelEntry:(NSString *)entryTitle;
 
 // Colours
 + (UIColor *)SCIColor_Primary;

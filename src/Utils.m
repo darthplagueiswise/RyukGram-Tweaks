@@ -1,5 +1,6 @@
 #import "Utils.h"
 #import "PhotoAlbum.h"
+#import "Settings/TweakSettings.h"
 
 @implementation SCIUtils
 
@@ -113,8 +114,35 @@
     UIViewController *rootController = [window rootViewController];
     SCISettingsViewController *settingsViewController = [SCISettingsViewController new];
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:settingsViewController];
-    
+
     [rootController presentViewController:navigationController animated:YES completion:nil];
+}
+
+// Open settings and push straight into a named top-level entry (e.g. "Messages").
++ (void)showSettingsVC:(UIWindow *)window atTopLevelEntry:(NSString *)entryTitle {
+    UIViewController *rootController = [window rootViewController];
+    SCISettingsViewController *root = [SCISettingsViewController new];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:root];
+
+    NSArray *targetNavSections = nil;
+    for (NSDictionary *section in [SCITweakSettings sections]) {
+        for (SCISetting *row in section[@"rows"]) {
+            if (row.type == SCITableCellNavigation && [row.title isEqualToString:entryTitle]) {
+                targetNavSections = row.navSections;
+                break;
+            }
+        }
+        if (targetNavSections) break;
+    }
+
+    if (targetNavSections) {
+        SCISettingsViewController *child = [[SCISettingsViewController alloc]
+            initWithTitle:entryTitle sections:targetNavSections reduceMargin:NO];
+        child.title = entryTitle;
+        [nav pushViewController:child animated:NO];
+    }
+
+    [rootController presentViewController:nav animated:YES completion:nil];
 }
 
 // Colours

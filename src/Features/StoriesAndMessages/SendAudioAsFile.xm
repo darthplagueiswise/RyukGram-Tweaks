@@ -1,6 +1,8 @@
-// Send audio file as voice message in DMs
-// Injects native "Upload Audio" item into the DM plus menu via IGDSMenuItem,
-// presents file/video picker with trim support, converts to AAC, sends through IG's voice pipeline.
+// Send audio/video files as voice messages in DMs.
+// Injects an Upload Audio item into the DM plus menu, runs the file through a
+// trim UI, transcodes to AAC m4a (or passes formats IG accepts as-is), then
+// hands the URL to IG's native voice pipeline.
+
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
 #import <objc/runtime.h>
@@ -18,13 +20,13 @@ static BOOL sciDMMenuPending = NO;
 
 #pragma mark - Send audio through IG pipeline
 
+static NSSet<NSString *> *sciPassthroughAudioExts(void);
+
 static void sciSendAudioFile(NSURL *audioURL, UIViewController *threadVC) {
     AVAsset *asset = [AVAsset assetWithURL:audioURL];
     double duration = CMTimeGetSeconds(asset.duration);
-    if (duration <= 0) {
-        [SCIUtils showErrorHUDWithDescription:@"Invalid audio duration"];
-        return;
-    }
+    // AVFoundation returns 0/NaN for containers it can't parse (e.g. Ogg).
+    if (duration <= 0 || isnan(duration)) duration = 1.0;
 
     id voiceController = sciAF(threadVC, @selector(voiceController));
     id voiceRecordVC = nil;
@@ -33,7 +35,6 @@ static void sciSendAudioFile(NSURL *audioURL, UIViewController *threadVC) {
         voiceRecordVC = vrIvar ? object_getIvar(voiceController, vrIvar) : nil;
     }
 
-    // generate waveform
     id waveform = nil;
     Class wfClass = NSClassFromString(@"IGDirectAudioWaveform");
     NSMutableArray *fallbackArr = [NSMutableArray array];
@@ -101,19 +102,60 @@ static void sciSendAudioFile(NSURL *audioURL, UIViewController *threadVC) {
 
 #pragma mark - Audio conversion with optional trim
 
+// Unified failure alert: explains why, lets the user try sending raw, and links
+// to the GitHub issues page for format requests.
+static void sciShowUnsupportedAlert(NSURL *url, NSString *reason, UIViewController *threadVC) {
+    NSString *fileExt = [[url pathExtension] lowercaseString];
+    NSString *displayExt = (fileExt.length > 0) ? [NSString stringWithFormat:@".%@", fileExt] : @"This file";
+    NSString *title = [NSString stringWithFormat:@"%@ can't be converted", displayExt];
+    NSString *msg = [NSString stringWithFormat:
+        @"iOS audio APIs couldn't process this file%@%@\n\n"
+         "You can try sending it to Instagram as-is — IG's server may accept it "
+         "(e.g. Opus/Ogg from web users), or it may silently fail.\n\n"
+         "If you'd like RyukGram to support this format natively, open an issue:\n"
+         "https://github.com/faroukbmiled/RyukGram/issues",
+        reason.length > 0 ? @":\n" : @".",
+        reason.length > 0 ? reason : @""];
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
+                                                                   message:msg
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    __weak UIViewController *weakVC = threadVC;
+    [alert addAction:[UIAlertAction actionWithTitle:@"Send anyway" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        sciSendAudioFile(url, weakVC);
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Open GitHub" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        [[UIApplication sharedApplication]
+            openURL:[NSURL URLWithString:@"https://github.com/faroukbmiled/RyukGram/issues"]
+            options:@{} completionHandler:nil];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleCancel handler:nil]];
+
+    UIViewController *presenter = threadVC ?: [UIApplication sharedApplication].keyWindow.rootViewController;
+    [presenter presentViewController:alert animated:YES completion:nil];
+}
+
 static void sciExportAndSend(NSURL *url, UIViewController *threadVC, BOOL isVideo, CMTimeRange trimRange) {
     BOOL hasTrim = CMTIMERANGE_IS_VALID(trimRange) && !CMTIMERANGE_IS_EMPTY(trimRange) &&
                    CMTimeGetSeconds(trimRange.duration) > 0;
+
+    // Allowlisted formats skip AVFoundation entirely; trim is ignored since
+    // AVFoundation can't read their timelines anyway.
+    NSString *ext = [[url pathExtension] lowercaseString];
+    if (!isVideo && [sciPassthroughAudioExts() containsObject:ext]) {
+        sciSendAudioFile(url, threadVC);
+        return;
+    }
 
     [SCIUtils showToastForDuration:1.5 title:isVideo ? @"Extracting audio..." : @"Converting..."];
 
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
         AVAsset *asset = [AVAsset assetWithURL:url];
-
-        // build composition — extract audio track (works for both audio-only and video files)
         AVAssetTrack *audioTrack = [[asset tracksWithMediaType:AVMediaTypeAudio] firstObject];
         if (!audioTrack) {
-            dispatch_async(dispatch_get_main_queue(), ^{ [SCIUtils showErrorHUDWithDescription:@"No audio track found"]; });
+            dispatch_async(dispatch_get_main_queue(), ^{
+                sciShowUnsupportedAlert(url, @"no audio track could be read", threadVC);
+            });
             return;
         }
 
@@ -124,7 +166,9 @@ static void sciExportAndSend(NSURL *url, UIViewController *threadVC, BOOL isVide
         NSError *insertErr = nil;
         [ct insertTimeRange:sourceRange ofTrack:audioTrack atTime:kCMTimeZero error:&insertErr];
         if (insertErr) {
-            dispatch_async(dispatch_get_main_queue(), ^{ [SCIUtils showErrorHUDWithDescription:@"Failed to process audio"]; });
+            dispatch_async(dispatch_get_main_queue(), ^{
+                sciShowUnsupportedAlert(url, insertErr.localizedDescription, threadVC);
+            });
             return;
         }
 
@@ -141,19 +185,28 @@ static void sciExportAndSend(NSURL *url, UIViewController *threadVC, BOOL isVide
                 if (exp.status == AVAssetExportSessionStatusCompleted) {
                     sciSendAudioFile([NSURL fileURLWithPath:out], threadVC);
                 } else {
-                    [SCIUtils showErrorHUDWithDescription:[NSString stringWithFormat:@"Export failed: %@",
-                        exp.error.localizedDescription ?: @"unknown"]];
+                    sciShowUnsupportedAlert(url, exp.error.localizedDescription, threadVC);
                 }
             });
         }];
     });
 }
 
-// convenience: no trim
+// Extensions IG accepts as voice messages without conversion. Append after testing.
+//   m4a/aac    — native iOS recording format
+//   ogg/opus   — what web/desktop IG sends
+static NSSet<NSString *> *sciPassthroughAudioExts(void) {
+    static NSSet *set;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        set = [NSSet setWithArray:@[@"m4a", @"aac", @"ogg", @"opus"]];
+    });
+    return set;
+}
+
 static void sciConvertAndSend(NSURL *url, UIViewController *threadVC, BOOL isVideo) {
     NSString *ext = [[url pathExtension] lowercaseString];
-    // if audio file already in the right format and no trim needed, send directly
-    if (!isVideo && ([ext isEqualToString:@"m4a"] || [ext isEqualToString:@"aac"])) {
+    if (!isVideo && [sciPassthroughAudioExts() containsObject:ext]) {
         sciSendAudioFile(url, threadVC);
         return;
     }

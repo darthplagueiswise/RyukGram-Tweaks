@@ -60,7 +60,8 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"unsent_message_toast": @(NO),
         @"warn_refresh_clears_preserved": @(NO),
         @"enable_chat_exclusions": @(YES),
-        @"exclusions_default_keep_deleted": @(NO)
+        @"exclusions_default_keep_deleted": @(NO),
+        @"unexclude_inbox_button": @(YES)
     };
     [[NSUserDefaults standardUserDefaults] registerDefaults:sciDefaults];
     

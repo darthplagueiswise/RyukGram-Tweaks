@@ -112,31 +112,60 @@ static void sciSetPlayViewOpacity(id cell, CGFloat opacity) {
     }
 }
 
-// Force unmute by calling _didTapSoundButton on the section controller
+// Swallow IG's "no sound" toast and remember the media so we don't retry it.
+static NSString * const SCINoSoundToastText = @"This reel has no sound.";
+static BOOL sciSuppressNoSoundToast = NO;
+static BOOL sciSawNoSoundDuringUnmute = NO;
+static NSMutableSet<NSString *> *sciNoAudioMediaIds = nil;
+
+static NSString *sciMediaIdFor(id media) {
+    if (!media) return nil;
+    for (NSString *k in @[@"pk", @"mediaPk", @"mediaID", @"mpk"]) {
+        @try {
+            id v = [media valueForKey:k];
+            if (v) return [NSString stringWithFormat:@"%@", v];
+        } @catch (__unused id e) {}
+    }
+    return nil;
+}
+
 static void sciForceUnmuteCell(id videoCell) {
     if (!videoCell) return;
     Ivar delegateIvar = class_getInstanceVariable([videoCell class], "_delegate");
     if (!delegateIvar) return;
     id sectionCtrl = object_getIvar(videoCell, delegateIvar);
     if (!sectionCtrl) return;
+
+    Ivar mediaIvar = class_getInstanceVariable([sectionCtrl class], "_media");
+    id media = mediaIvar ? object_getIvar(sectionCtrl, mediaIvar) : nil;
+    NSString *mediaId = sciMediaIdFor(media);
+    if (mediaId && [sciNoAudioMediaIds containsObject:mediaId]) return;
+
     SEL isAudioSel = NSSelectorFromString(@"isAudioEnabled");
     if (![sectionCtrl respondsToSelector:isAudioSel]) return;
     BOOL audioOn = ((BOOL(*)(id,SEL))objc_msgSend)(sectionCtrl, isAudioSel);
     if (audioOn) return;
+
     SEL tapSel = NSSelectorFromString(@"_didTapSoundButton");
-    if ([sectionCtrl respondsToSelector:tapSel]) {
-        ((void(*)(id,SEL))objc_msgSend)(sectionCtrl, tapSel);
+    if (![sectionCtrl respondsToSelector:tapSel]) return;
+
+    sciSuppressNoSoundToast = YES;
+    sciSawNoSoundDuringUnmute = NO;
+    ((void(*)(id,SEL))objc_msgSend)(sectionCtrl, tapSel);
+    sciSuppressNoSoundToast = NO;
+
+    if (sciSawNoSoundDuringUnmute && mediaId) {
+        if (!sciNoAudioMediaIds) sciNoAudioMediaIds = [NSMutableSet new];
+        [sciNoAudioMediaIds addObject:mediaId];
     }
 }
 
 %hook IGSundialViewerVideoCell
-// Video playing/unpausing — use hidden (IG sets hidden=NO on next pause)
+// hidden=YES on play; IG resets it on the next pause.
 - (void)sundialVideoPlaybackViewDidStartPlaying:(id)view {
     %orig;
     if (sciIsPausePlayMode()) {
         sciHidePlayView(self);
-        // Force unmute if in reels tab — this fires when the video ACTUALLY starts
-        // playing, guaranteed to have a ready section controller
         if (sciIsInReelsTab) sciForceUnmuteCell(self);
     }
 }
@@ -226,7 +255,7 @@ static void new_playbackToggle_layoutSubviews(id self, SEL _cmd) {
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
     sciIsInReelsTab = YES;
-    // Force unmute first reel — retry until the cell is ready
+    // Retry-until-ready: the first reel's cell may not be wired up yet.
     if (sciIsPausePlayMode()) {
         id feedVC = self;
         for (int i = 0; i < 10; i++) {
@@ -253,6 +282,30 @@ static void new_playbackToggle_layoutSubviews(id self, SEL _cmd) {
             if (cell) sciForceUnmuteCell(cell);
         }
     }
+}
+%end
+
+%hook UILabel
+- (void)setText:(NSString *)text {
+    if (sciSuppressNoSoundToast && [text isEqualToString:SCINoSoundToastText]) {
+        sciSawNoSoundDuringUnmute = YES;
+        %orig(@"");
+        self.hidden = YES;
+        // Container view is attached to a window after we return — detach the
+        // topmost non-window ancestor on the next tick to remove the outline.
+        __weak UILabel *weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UILabel *s = weakSelf;
+            if (!s) return;
+            UIView *top = s;
+            while (top.superview && ![top.superview isKindOfClass:[UIWindow class]]) {
+                top = top.superview;
+            }
+            [top removeFromSuperview];
+        });
+        return;
+    }
+    %orig;
 }
 %end
 

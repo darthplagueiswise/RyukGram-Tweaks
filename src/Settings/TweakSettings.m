@@ -193,6 +193,7 @@
                                                                                 [SCISetting menuCellWithTitle:@"Read receipt mode" subtitle:@"How the seen button behaves" menu:[self menus][@"seen_mode"]],
                                                                                 [SCISetting switchCellWithTitle:@"Auto mark seen on interact" subtitle:@"Locally marks messages as seen when you send any message" defaultsKey:@"seen_auto_on_interact"],
                                                                                 [SCISetting switchCellWithTitle:@"Auto mark seen on typing" subtitle:@"Marks messages as seen the moment you start typing in a DM (works even when typing status is hidden)" defaultsKey:@"seen_auto_on_typing"],
+                                                                                [SCISetting switchCellWithTitle:@"Un-exclude button in excluded chats" subtitle:@"Show a small eye button in excluded chats to remove them from the exclusion list (with confirmation). Long-press it for more options." defaultsKey:@"unexclude_inbox_button"],
                                                                             ]
                                                                         }]
                                                 ],
@@ -295,15 +296,15 @@
                                                icon:[SCISymbol symbolWithName:@"arrow.up.arrow.down.square"]
                                         navSections:@[@{
                                             @"header": @"",
-                                            @"footer": @"Export your RyukGram settings to a JSON file or QR code, and import them later from Files or a photo. Importing resets all settings to defaults before applying the imported values, and shows a preview before anything changes.",
+                                            @"footer": @"Export your RyukGram settings to a JSON file and import them later. Importing resets all settings to defaults before applying the imported values, and shows a preview before anything changes.",
                                             @"rows": @[
                                                 [SCISetting buttonCellWithTitle:@"Export settings"
-                                                                       subtitle:@"Save as a file or scannable QR code"
+                                                                       subtitle:@"Save settings as a JSON file"
                                                                            icon:[SCISymbol symbolWithName:@"square.and.arrow.up"]
                                                                          action:^(void) { [SCISettingsBackup presentExport]; }
                                                 ],
                                                 [SCISetting buttonCellWithTitle:@"Import settings"
-                                                                       subtitle:@"From a file or QR code in your library"
+                                                                       subtitle:@"Load settings from a JSON file"
                                                                            icon:[SCISymbol symbolWithName:@"square.and.arrow.down"]
                                                                          action:^(void) { [SCISettingsBackup presentImport]; }
                                                 ]

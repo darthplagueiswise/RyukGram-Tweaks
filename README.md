@@ -84,6 +84,7 @@ A feature-rich iOS tweak for Instagram, forked from [SCInsta](https://github.com
 - Hide trailing action buttons on preserved messages
 - Warn before clearing on refresh — optional confirmation when pulling to refresh the DMs tab if preserved messages would be cleared **\***
 - Manually mark messages as seen (button or toggle mode) **\***
+- Long-press the seen button for quick actions **\***
 - Auto mark seen on send (marks messages as read when you send any message) **\***
 - Auto mark seen on typing (marks messages as read the moment you start typing, even when typing status is hidden) **\***
 - Mark seen on story like **\***
@@ -131,8 +132,8 @@ A feature-rich iOS tweak for Instagram, forked from [SCInsta](https://github.com
 - Search bar in the main settings page — recursively finds any setting across nested pages with a breadcrumb to its location
 
 ### Backup & Restore **\***
-- Export RyukGram settings as a JSON file or scannable QR code
-- Import settings from a file in Files or a QR code from your photo library
+- Export RyukGram settings as a JSON file
+- Import settings from a JSON file
 - Searchable, collapsible, editable preview before saving or applying
 
 ### Optimization
