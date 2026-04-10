@@ -79,6 +79,7 @@ A feature-rich iOS tweak for Instagram, forked from [SCInsta](https://github.com
 - Save profile picture
 - Download buttons on media — tap a button directly on feed posts, reels sidebar, and story overlay **\***
 - Download method — choose between download button or long-press gesture **\***
+- Download highlight cover from profile long-press menu **\***
 - Save action — choose between share sheet or save directly to Photos **\***
 - Save to RyukGram album — optional toggle that routes downloads (and share-sheet "Save to Photos" picks) into a dedicated "RyukGram" album in Photos **\***
 - Download confirmation — optional confirmation dialog before downloading **\***

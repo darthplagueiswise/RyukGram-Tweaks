@@ -74,6 +74,7 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"embed_links": @(NO),
         @"embed_link_domain": @"kkinstagram.com",
         @"strip_tracking_params": @(NO),
+        @"download_highlight_cover": @(YES),
         @"open_links_external": @(NO),
         @"strip_browser_tracking": @(NO),
         @"hide_feed_repost": @(NO),
