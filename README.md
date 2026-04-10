@@ -54,6 +54,7 @@ A feature-rich iOS tweak for Instagram, forked from [SCInsta](https://github.com
 - Confirm reel refresh
 - Unlock password-locked reels **\***
 - Hide reels header
+- Hide repost button in reels **\***
 - Hide reels blend button
 - Disable scrolling reels
 - Prevent doom scrolling (limit maximum viewable reels)

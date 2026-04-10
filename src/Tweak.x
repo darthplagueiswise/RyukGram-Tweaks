@@ -692,6 +692,7 @@ shouldPersistLastBugReportId:(id)arg6
 }
 
 - (void)_didTapRepostButton {
+    if ([SCIUtils getBoolPref:@"hide_reels_repost"]) return;
     if ([SCIUtils getBoolPref:@"repost_confirm"]) {
         [SCIUtils showConfirmation:^(void) { %orig; }];
     }
@@ -701,8 +702,17 @@ shouldPersistLastBugReportId:(id)arg6
 }
 
 - (void)_didLongPressRepostButton:(id)arg1 {
+    if ([SCIUtils getBoolPref:@"hide_reels_repost"]) return;
     if ([SCIUtils getBoolPref:@"repost_confirm"]) return;
     %orig;
+}
+%end
+
+// Hide repost button at the view model level so IG's layout handles the gap
+%hook IGSundialViewerUFIViewModel
+- (BOOL)shouldShowRepostButton {
+    if ([SCIUtils getBoolPref:@"hide_reels_repost"]) return NO;
+    return %orig;
 }
 %end
 

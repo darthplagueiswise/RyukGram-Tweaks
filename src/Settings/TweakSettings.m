@@ -97,7 +97,8 @@
                                         @{
                                             @"header": @"Hiding",
                                             @"rows": @[
-                                                [SCISetting switchCellWithTitle:@"Hide reels header" subtitle:@"Hides the top navigation bar when watching reels" defaultsKey:@"hide_reels_header"]
+                                                [SCISetting switchCellWithTitle:@"Hide reels header" subtitle:@"Hides the top navigation bar when watching reels" defaultsKey:@"hide_reels_header"],
+                                                [SCISetting switchCellWithTitle:@"Hide repost button" subtitle:@"Hides the repost button on the reels sidebar" defaultsKey:@"hide_reels_repost"]
                                             ]
                                         },
                                         @{
