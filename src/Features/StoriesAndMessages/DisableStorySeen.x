@@ -123,7 +123,7 @@ static BOOL sciShouldBlockSeenVisualForObj(id obj) {
 // Hooks all known like entry points to trigger mark-seen and auto-advance on like.
 // Uses sciMarkSeenTapped: from OverlayButtons.xm for the actual seen flow.
 
-static __weak UIViewController *sciActiveStoryVC = nil;
+__weak UIViewController *sciActiveStoryVC = nil;
 
 %hook IGStoryViewerViewController
 - (void)viewDidAppear:(BOOL)animated {

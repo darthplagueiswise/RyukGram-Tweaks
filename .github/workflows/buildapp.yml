@@ -1,8 +1,3 @@
-# Inspired heavily by the following workflows
-# https://github.com/arichornlover/uYouEnhanced/blob/main/.github/workflows/buildapp.yml
-# https://github.com/ISnackable/YTCubePlus/blob/main/.github/workflows/Build.yml
-# https://github.com/BandarHL/BHTwitter/actions/workflows/build.yml
-
 name: Build and Package RyukGram
 
 on:
@@ -88,7 +83,10 @@ jobs:
                 echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
                 echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-            - name: Build RyukGram tweak for sideloading (as IPA)
+            - name: Setup FFmpegKit
+              run: cd main && ./scripts/setup-ffmpegkit.sh
+
+            - name: Build sideloaded IPA (rootless deb → cyan inject)
               run: |
                 pip install --force-reinstall https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
 
@@ -96,22 +94,22 @@ jobs:
                 curl -Lo ipapatch https://github.com/asdfzxcvbn/ipapatch/releases/download/v2.1.3/ipapatch.macos-arm64
                 chmod +x ipapatch
                 export PATH=.:$PATH
-                ls -la
 
                 ./build.sh sideload
                 ls -la packages
               env:
                 THEOS: ${{ github.workspace }}/theos
 
-            - name: Rename IPA to include version info
+            - name: Rename IPA
               run: |
                 cd main/packages
-                mv "$(ls -t | head -n1)" "RyukGram_sideloaded_v${VERSION}.ipa"
+                IPA=$(ls -t *.ipa | grep -iv instagram | head -n1)
+                [ -n "$IPA" ] && mv "$IPA" "RyukGram_sideloaded_v${VERSION}.ipa"
 
             - name: Pass package name to upload action
               id: package_name
               run: |
-                echo "package=$(ls -t main/packages | head -n1)" >> "$GITHUB_OUTPUT"
+                echo "package=$(ls -t main/packages/RyukGram_sideloaded_v*.ipa | head -n1 | xargs basename)" >> "$GITHUB_OUTPUT"
 
             - name: Upload Artifact
               if: ${{ inputs.upload_artifact }}

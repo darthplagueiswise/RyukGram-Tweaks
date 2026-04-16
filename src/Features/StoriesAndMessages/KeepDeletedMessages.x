@@ -356,7 +356,7 @@ static void sciShowUnsentToast() {
     pill.alpha = 0;
 
     UILabel *label = [[UILabel alloc] init];
-    label.text = @"A message was unsent";
+    label.text = SCILocalized(@"A message was unsent");
     label.textColor = [UIColor whiteColor];
     label.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
     label.textAlignment = NSTextAlignmentCenter;
@@ -606,7 +606,7 @@ static void sciUpdateCellIndicator(id cell) {
     UIView *parent = bubble ?: view;
     UILabel *label = [[UILabel alloc] init];
     label.tag = SCI_PRESERVED_TAG;
-    label.text = @"Unsent";
+    label.text = SCILocalized(@"Unsent");
     label.font = [UIFont italicSystemFontOfSize:10];
     label.textColor = [UIColor colorWithRed:1.0 green:0.3 blue:0.3 alpha:0.9];
     label.translatesAutoresizingMaskIntoConstraints = NO;

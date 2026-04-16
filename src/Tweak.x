@@ -2,6 +2,7 @@
 #import "InstagramHeaders.h"
 #import "Tweak.h"
 #import "Utils.h"
+#include "../modules/fishhook/fishhook.h"
 
 ///////////////////////////////////////////////////////////
 
@@ -13,7 +14,7 @@
 ///////////////////////////////////////////////////////////
 
 // * Tweak version *
-NSString *SCIVersionString = @"v1.1.5.1";
+NSString *SCIVersionString = @"v1.2.0";
 
 // Variables that work across features
 BOOL dmVisualMsgsViewedButtonEnabled = false;
@@ -30,12 +31,52 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"remove_screenshot_alert": @(YES),
         @"call_confirm": @(YES),
         @"keep_deleted_message": @(NO),
-        @"dw_feed_posts": @(YES),
-        @"dw_reels": @(YES),
-        @"dw_story": @(YES),
+        @"hide_suggested_stories": @(NO),
+        @"story_tray_actions": @(NO),
+        @"zoom_profile_photo": @(NO),
+        @"follow_indicator": @(NO),
+        @"profile_note_copy": @(NO),
+        @"disable_disappearing_mode_swipe": @(NO),
+        @"hide_voice_call_button": @(NO),
+        @"hide_video_call_button": @(NO),
+        @"fake_location_enabled": @(NO),
+        @"show_fake_location_map_button": @(NO),
+        @"fake_location_lat": @(48.8584),
+        @"fake_location_lon": @(2.2945),
+        @"fake_location_name": @"Eiffel Tower",
+        @"fake_location_presets": @[],
+        @"messages_only": @(NO),
+        @"launch_tab": @"default",
         @"save_profile": @(YES),
-        @"dw_method": @"button",
-        @"dw_confirm": @(YES),
+        // Per-context action buttons (new in 1.1.6)
+        @"feed_media_zoom": @(NO),
+        @"disable_bg_refresh": @(NO),
+        @"disable_home_refresh": @(NO),
+        @"disable_home_scroll": @(NO),
+        @"disable_reels_tab_refresh": @(NO),
+        @"dm_full_last_active": @(NO),
+        @"send_file": @(NO),
+        @"note_actions": @(NO),
+        @"note_copy_on_hold": @(NO),
+        @"feed_date_format": @"default",
+        // Per-surface date format toggles (see SCIDateFormatEntries.h)
+        @"date_fmt_mixed": @(YES),
+        @"date_fmt_notes_comments_stories": @(NO),
+        @"date_fmt_dms": @(NO),
+        @"feed_action_button": @(YES),
+        @"feed_action_default": @"menu",
+        @"reels_action_button": @(YES),
+        @"reels_action_default": @"menu",
+        @"stories_action_button": @(YES),
+        @"stories_action_default": @"menu",
+        // Legacy long-press gesture (off by default — kept for users who prefer it)
+        @"dw_legacy_gesture": @(NO),
+        @"dw_confirm": @(NO),
+        @"enhance_download_quality": @(YES),
+        @"default_video_quality": @"always_ask",
+        @"default_photo_quality": @"high",
+        @"ffmpeg_encoding_speed": @"ultrafast",
+        @"unfollow_confirm": @(NO),
         @"dw_save_action": @"share",
         @"dw_finger_count": @(3),
         @"dw_finger_duration": @(0.5),
@@ -56,6 +97,8 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"seen_auto_on_interact": @(NO),
         @"seen_auto_on_typing": @(NO),
         @"seen_on_story_like": @(NO),
+        @"seen_on_story_reply": @(NO),
+        @"advance_on_story_reply": @(NO),
         @"advance_on_mark_seen": @(NO),
         @"advance_on_story_like": @(NO),
         @"indicate_unsent_messages": @(NO),
@@ -70,6 +113,7 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"story_excluded_show_unexclude_eye": @(YES),
         @"story_seen_mode": @"button",
         @"story_audio_toggle": @(NO),
+        @"view_story_mentions": @(YES),
         @"settings_pause_playback": @(YES),
         @"embed_links": @(NO),
         @"embed_link_domain": @"kkinstagram.com",
@@ -79,9 +123,11 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"strip_browser_tracking": @(NO),
         @"hide_feed_repost": @(NO),
         @"copy_comment": @(YES),
-        @"download_gif_comment": @(YES)
+        @"download_gif_comment": @(YES),
+        @"sci_language": @"system"
     };
     [[NSUserDefaults standardUserDefaults] registerDefaults:sciDefaults];
+    [SCIUtils setSciRegisteredDefaults:sciDefaults];
     
     // Override instagram defaults
     if ([SCIUtils getBoolPref:@"liquid_glass_buttons"]) {
@@ -608,31 +654,27 @@ shouldPersistLastBugReportId:(id)arg6
     for (id obj in originalObjs) {
         BOOL shouldHide = NO;
 
-        // Meta AI
-        if (
-            [[obj valueForKey:@"title"] isEqualToString:@"AI images"]
-            || [[obj valueForKey:@"title"] isEqualToString:@"Meta AI"]
-        ) {
-            
-            if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
-                NSLog(@"[SCInsta] Hiding meta ai from IGDS menu");
+        NSString *itemTitle = nil;
+        @try { itemTitle = [obj valueForKey:@"title"]; } @catch (__unused id e) {}
 
+        // Meta AI
+        if ([itemTitle isEqualToString:@"AI images"] || [itemTitle isEqualToString:@"Meta AI"]) {
+            if ([SCIUtils getBoolPref:@"hide_meta_ai"]) {
                 shouldHide = YES;
             }
-
         }
 
-        // Populate new objs array
         if (!shouldHide) {
             [filteredObjs addObject:obj];
         }
-
     }
 
     extern NSArray *sciMaybeAppendStoryExcludeMenuItem(NSArray *);
     extern NSArray *sciMaybeAppendStoryAudioMenuItem(NSArray *);
+    extern NSArray *sciMaybeAppendStoryMentionsMenuItem(NSArray *);
     NSArray *finalObjs = sciMaybeAppendStoryExcludeMenuItem([filteredObjs copy]);
     finalObjs = sciMaybeAppendStoryAudioMenuItem(finalObjs);
+    finalObjs = sciMaybeAppendStoryMentionsMenuItem(finalObjs);
     return %orig(finalObjs, edr, headerLabelText);
 }
 %end
@@ -798,7 +840,42 @@ static BOOL new_expHelper_isHomeFeed(id self, SEL _cmd) {
     return orig_expHelper_isHomeFeed(self, _cmd);
 }
 
+// Liquid glass tab bar — C function hooks via fishhook
+// Credits: @euoradan (Radan) for discovering these flags
+static BOOL (*orig_IGFloatingTabBarEnabled)(void) = NULL;
+static BOOL (*orig_IGTabBarDynamicSizingEnabled)(void) = NULL;
+static BOOL (*orig_IGTabBarEnhancedDynamicSizingEnabled)(void) = NULL;
+static BOOL (*orig_IGTabBarHomecomingWithFloatingTabEnabled)(void) = NULL;
+static BOOL (*orig_IGTabBarViewPointFixEnabled)(void) = NULL;
+static NSInteger (*orig_IGTabBarStyleForLauncherSet)(NSInteger) = NULL;
+
+static BOOL hook_IGFloatingTabBarEnabled(void) {
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return YES;
+    return orig_IGFloatingTabBarEnabled ? orig_IGFloatingTabBarEnabled() : NO;
+}
+static BOOL hook_IGTabBarDynamicSizingEnabled(void) {
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return YES;
+    return orig_IGTabBarDynamicSizingEnabled ? orig_IGTabBarDynamicSizingEnabled() : NO;
+}
+static BOOL hook_IGTabBarEnhancedDynamicSizingEnabled(void) {
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return YES;
+    return orig_IGTabBarEnhancedDynamicSizingEnabled ? orig_IGTabBarEnhancedDynamicSizingEnabled() : NO;
+}
+static BOOL hook_IGTabBarHomecomingWithFloatingTabEnabled(void) {
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return YES;
+    return orig_IGTabBarHomecomingWithFloatingTabEnabled ? orig_IGTabBarHomecomingWithFloatingTabEnabled() : NO;
+}
+static BOOL hook_IGTabBarViewPointFixEnabled(void) {
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return YES;
+    return orig_IGTabBarViewPointFixEnabled ? orig_IGTabBarViewPointFixEnabled() : NO;
+}
+static NSInteger hook_IGTabBarStyleForLauncherSet(NSInteger set) {
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return 1;
+    return orig_IGTabBarStyleForLauncherSet ? orig_IGTabBarStyleForLauncherSet(set) : set;
+}
+
 %ctor {
+    // ObjC hooks for liquid glass buttons
     Class swizzleToggle = objc_getClass("IGLiquidGlassSwizzle.IGLiquidGlassSwizzleToggle");
     if (swizzleToggle) {
         MSHookMessageEx(swizzleToggle, @selector(isEnabled),
@@ -811,5 +888,21 @@ static BOOL new_expHelper_isHomeFeed(id self, SEL _cmd) {
                         (IMP)new_expHelper_isEnabled, (IMP *)&orig_expHelper_isEnabled);
         MSHookMessageEx(expHelper, @selector(isHomeFeedHeaderEnabled),
                         (IMP)new_expHelper_isHomeFeed, (IMP *)&orig_expHelper_isHomeFeed);
+    }
+
+    // C function hooks for liquid glass tab bar / surfaces (fishhook)
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) {
+        int result = rebind_symbols((struct rebinding[]){
+            {"IGFloatingTabBarEnabled", (void *)hook_IGFloatingTabBarEnabled, (void **)&orig_IGFloatingTabBarEnabled},
+            {"IGTabBarDynamicSizingEnabled", (void *)hook_IGTabBarDynamicSizingEnabled, (void **)&orig_IGTabBarDynamicSizingEnabled},
+            {"IGTabBarEnhancedDynamicSizingEnabled", (void *)hook_IGTabBarEnhancedDynamicSizingEnabled, (void **)&orig_IGTabBarEnhancedDynamicSizingEnabled},
+            {"IGTabBarHomecomingWithFloatingTabEnabled", (void *)hook_IGTabBarHomecomingWithFloatingTabEnabled, (void **)&orig_IGTabBarHomecomingWithFloatingTabEnabled},
+            {"IGTabBarViewPointFixEnabled", (void *)hook_IGTabBarViewPointFixEnabled, (void **)&orig_IGTabBarViewPointFixEnabled},
+            {"IGTabBarStyleForLauncherSet", (void *)hook_IGTabBarStyleForLauncherSet, (void **)&orig_IGTabBarStyleForLauncherSet},
+        }, 6);
+        NSLog(@"[SCInsta] Liquid glass fishhook result=%d floating=%p dynamic=%p enhanced=%p homecoming=%p viewpoint=%p style=%p",
+              result, orig_IGFloatingTabBarEnabled, orig_IGTabBarDynamicSizingEnabled,
+              orig_IGTabBarEnhancedDynamicSizingEnabled, orig_IGTabBarHomecomingWithFloatingTabEnabled,
+              orig_IGTabBarViewPointFixEnabled, orig_IGTabBarStyleForLauncherSet);
     }
 }

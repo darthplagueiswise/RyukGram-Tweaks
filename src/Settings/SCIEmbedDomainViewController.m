@@ -16,7 +16,7 @@ static NSArray *sciPresetDomains(void) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"Embed domain";
+    self.title = SCILocalized(@"Embed domain");
     self.view.backgroundColor = [UIColor systemBackgroundColor];
 
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
@@ -44,7 +44,7 @@ static NSArray *sciPresetDomains(void) {
 }
 
 - (void)addCustom {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Add custom domain"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:SCILocalized(@"Add custom domain")
                                                                    message:nil
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
@@ -53,7 +53,7 @@ static NSArray *sciPresetDomains(void) {
         tf.autocorrectionType = UITextAutocorrectionTypeNo;
         tf.keyboardType = UIKeyboardTypeURL;
     }];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Add" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Add") style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
         NSString *domain = alert.textFields.firstObject.text;
         domain = [domain stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
         domain = [domain stringByReplacingOccurrencesOfString:@"https://" withString:@""];
@@ -66,7 +66,7 @@ static NSArray *sciPresetDomains(void) {
         [[NSUserDefaults standardUserDefaults] setObject:domain forKey:@"embed_link_domain"];
         [self reload];
     }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
 
@@ -75,7 +75,7 @@ static NSArray *sciPresetDomains(void) {
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return 2; }
 
 - (NSString *)tableView:(UITableView *)tv titleForHeaderInSection:(NSInteger)section {
-    return section == 0 ? @"Presets" : @"Custom";
+    return section == 0 ? SCILocalized(@"Presets") : SCILocalized(@"Custom");
 }
 
 - (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)section {
@@ -108,7 +108,7 @@ static NSArray *sciPresetDomains(void) {
     if (indexPath.section == 0) return nil;
     NSString *domain = self.customDomains[indexPath.row];
     UIContextualAction *del = [UIContextualAction
-        contextualActionWithStyle:UIContextualActionStyleDestructive title:@"Delete"
+        contextualActionWithStyle:UIContextualActionStyleDestructive title:SCILocalized(@"Delete")
                           handler:^(UIContextualAction *_, UIView *__, void (^cb)(BOOL)) {
         NSMutableArray *all = [self.customDomains mutableCopy];
         [all removeObject:domain];

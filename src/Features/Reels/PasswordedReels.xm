@@ -136,13 +136,13 @@ static UIView * _Nullable sciFindSubmitButton(UIView *root) {
 
     NSString *password = sciGetPassword(self);
     if (!password) {
-        [SCIUtils showErrorHUDWithDescription:@"No password found"];
+        [SCIUtils showErrorHUDWithDescription:SCILocalized(@"No password found")];
         return;
     }
 
     UITextField *textField = sciFindTextField(self);
     if (!textField) {
-        [SCIUtils showErrorHUDWithDescription:@"No text field found"];
+        [SCIUtils showErrorHUDWithDescription:SCILocalized(@"No text field found")];
         return;
     }
 
@@ -172,16 +172,16 @@ static UIView * _Nullable sciFindSubmitButton(UIView *root) {
 
     NSString *password = sciGetPassword(self);
     if (!password) {
-        [SCIUtils showErrorHUDWithDescription:@"No password found"];
+        [SCIUtils showErrorHUDWithDescription:SCILocalized(@"No password found")];
         return;
     }
 
     [[UIPasteboard generalPasteboard] setString:password];
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Password"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:SCILocalized(@"Password")
                                                                   message:password
                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Copied!" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Copied!") style:UIAlertActionStyleCancel handler:nil]];
     UIViewController *topVC = topMostController();
     if (topVC) [topVC presentViewController:alert animated:YES completion:nil];
 }

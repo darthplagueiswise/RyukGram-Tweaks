@@ -16,12 +16,12 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"Story users";
+    self.title = SCILocalized(@"Story users");
     self.view.backgroundColor = [UIColor systemBackgroundColor];
 
     self.searchBar = [[UISearchBar alloc] init];
     self.searchBar.delegate = self;
-    self.searchBar.placeholder = @"Search by username or name";
+    self.searchBar.placeholder = SCILocalized(@"Search by username or name");
     [self.searchBar sizeToFit];
 
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
@@ -51,7 +51,7 @@
         initWithImage:[UIImage systemImageNamed:@"arrow.up.arrow.down"]
                 style:UIBarButtonItemStylePlain target:self action:@selector(toggleSort)];
     self.editBtn = [[UIBarButtonItem alloc]
-        initWithTitle:@"Select" style:UIBarButtonItemStylePlain target:self action:@selector(toggleEdit)];
+        initWithTitle:SCILocalized(@"Select") style:UIBarButtonItemStylePlain target:self action:@selector(toggleEdit)];
     self.navigationItem.rightBarButtonItems = @[self.editBtn, self.sortBtn];
 
     [self reload];
@@ -60,12 +60,12 @@
 - (void)toggleEdit {
     BOOL entering = !self.tableView.isEditing;
     [self.tableView setEditing:entering animated:YES];
-    self.editBtn.title = entering ? @"Done" : @"Select";
+    self.editBtn.title = entering ? SCILocalized(@"Done") : SCILocalized(@"Select");
     self.editBtn.style = entering ? UIBarButtonItemStyleDone : UIBarButtonItemStylePlain;
     self.batchToolbar.hidden = !entering;
     if (entering) {
         UIBarButtonItem *flex = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-        UIBarButtonItem *del = [[UIBarButtonItem alloc] initWithTitle:@"Remove Selected" style:UIBarButtonItemStylePlain target:self action:@selector(removeSelected)];
+        UIBarButtonItem *del = [[UIBarButtonItem alloc] initWithTitle:SCILocalized(@"Remove Selected") style:UIBarButtonItemStylePlain target:self action:@selector(removeSelected)];
         del.tintColor = [UIColor systemRedColor];
         self.batchToolbar.items = @[flex, del, flex];
     }
@@ -83,7 +83,7 @@
 }
 
 - (void)toggleSort {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Sort by"
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:SCILocalized(@"Sort by")
                                                                    message:nil
                                                             preferredStyle:UIAlertControllerStyleActionSheet];
     NSArray *titles = @[@"Recently added", @"Username (A–Z)"];
@@ -97,7 +97,7 @@
         if (i == self.sortMode) [a setValue:@YES forKey:@"checked"];
         [sheet addAction:a];
     }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [sheet addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.barButtonItem = self.sortBtn;
     [self presentViewController:sheet animated:YES completion:nil];
 }
@@ -123,7 +123,7 @@
     }
     self.filtered = all;
     BOOL bs = [SCIExcludedStoryUsers isBlockSelectedMode];
-    NSString *label = bs ? @"Included users" : @"Excluded users";
+    NSString *label = bs ? SCILocalized(@"Included users") : SCILocalized(@"Excluded users");
     self.title = [NSString stringWithFormat:@"%@ (%lu)", label, (unsigned long)self.filtered.count];
     [self.tableView reloadData];
 }
@@ -169,7 +169,7 @@
     NSString *pk = e[@"pk"];
     UIContextualAction *del = [UIContextualAction
         contextualActionWithStyle:UIContextualActionStyleDestructive
-                            title:@"Remove"
+                            title:SCILocalized(@"Remove")
                           handler:^(UIContextualAction *_, UIView *__, void (^cb)(BOOL)) {
         [SCIExcludedStoryUsers removePK:pk];
         [self reload];

@@ -27,7 +27,7 @@
     UIColorPickerViewController *colorPickerController = [[UIColorPickerViewController alloc] init];
 
     colorPickerController.delegate = (id<UIColorPickerViewControllerDelegate>)self; // cast to suppress warnings
-    colorPickerController.title = @"Select color";
+    colorPickerController.title = SCILocalized(@"Select color");
     colorPickerController.modalPresentationStyle = UIModalPresentationPopover;
     colorPickerController.supportsAlpha = NO;
     colorPickerController.selectedColor = self.color;

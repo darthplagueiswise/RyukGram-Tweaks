@@ -59,7 +59,7 @@ static id new_commentCtxMenu(id self, SEL _cmd, id cv, id indexPath, CGPoint poi
         NSMutableArray *extra = [NSMutableArray array];
 
         if (hasText && [SCIUtils getBoolPref:@"copy_comment"]) {
-            [extra addObject:[UIAction actionWithTitle:@"Copy"
+            [extra addObject:[UIAction actionWithTitle:SCILocalized(@"Copy")
                                                  image:[UIImage systemImageNamed:@"doc.on.doc"]
                                             identifier:nil
                                                handler:^(__kindof UIAction *_) {
@@ -68,7 +68,7 @@ static id new_commentCtxMenu(id self, SEL _cmd, id cv, id indexPath, CGPoint poi
         }
 
         if (hasGif && [SCIUtils getBoolPref:@"download_gif_comment"]) {
-            [extra addObject:[UIAction actionWithTitle:@"Download GIF"
+            [extra addObject:[UIAction actionWithTitle:SCILocalized(@"Download GIF")
                                                image:[UIImage systemImageNamed:@"arrow.down.circle"]
                                           identifier:nil
                                              handler:^(__kindof UIAction *_) {

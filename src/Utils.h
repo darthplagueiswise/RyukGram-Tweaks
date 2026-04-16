@@ -8,6 +8,7 @@
 
 #import "InstagramHeaders.h"
 #import "QuickLook.h"
+#import "Localization/SCILocalization.h"
 
 #import "Settings/SCISettingsViewController.h"
 
@@ -24,6 +25,11 @@
 + (BOOL)getBoolPref:(NSString *)key;
 + (double)getDoublePref:(NSString *)key;
 + (NSString *)getStringPref:(NSString *)key;
+
+// Registered SCInsta defaults (set once at app launch by Tweak.x). Used by
+// the settings backup so any new pref is included automatically.
++ (NSDictionary<NSString *, id> *)sciRegisteredDefaults;
++ (void)setSciRegisteredDefaults:(NSDictionary<NSString *, id> *)defaults;
 
 + (_Bool)liquidGlassEnabledBool:(_Bool)fallback;
 

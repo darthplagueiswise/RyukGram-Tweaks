@@ -30,6 +30,7 @@ typedef NS_ENUM(NSInteger, SCITableCell) {
 @property (nonatomic, strong) NSURL *imageUrl;
 
 @property (nonatomic) BOOL requiresRestart;
+@property (nonatomic) BOOL disabled;
 
 @property (nonatomic) double min;
 @property (nonatomic) double max;

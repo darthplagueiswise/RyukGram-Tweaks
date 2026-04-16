@@ -72,27 +72,27 @@ static id new_prismMenuView_init3(id self, SEL _cmd, NSArray *elements, id heade
         id directAudio = nil;
         @try { directAudio = [capturedVM valueForKey:@"audio"]; } @catch (NSException *e) {}
         if (!directAudio) {
-            [SCIUtils showErrorHUDWithDescription:@"Could not get audio data. Try again after refreshing the chat."];
+            [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Could not get audio data. Try again after refreshing the chat.")];
             return;
         }
 
         Ivar serverAudioIvar = class_getInstanceVariable([directAudio class], "_server_audio");
         id serverAudio = serverAudioIvar ? object_getIvar(directAudio, serverAudioIvar) : nil;
         if (!serverAudio) {
-            [SCIUtils showErrorHUDWithDescription:@"Audio not loaded yet. Play the message first and try again."];
+            [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Audio not loaded yet. Play the message first and try again.")];
             return;
         }
 
         NSURL *playbackURL = sciDAF(serverAudio, @selector(playbackURL));
         if (!playbackURL) playbackURL = sciDAF(serverAudio, @selector(fallbackURL));
         if (!playbackURL) {
-            [SCIUtils showErrorHUDWithDescription:@"No audio URL found. Try again after refreshing the chat."];
+            [SCIUtils showErrorHUDWithDescription:SCILocalized(@"No audio URL found. Try again after refreshing the chat.")];
             return;
         }
 
         UIView *topView = [UIApplication sharedApplication].keyWindow;
         SCIDownloadPillView *pill = [[SCIDownloadPillView alloc] init];
-        [pill setText:@"Downloading audio..."];
+        [pill setText:SCILocalized(@"Downloading audio...")];
         [pill showInView:topView];
 
         NSURLSessionDownloadTask *task = [[NSURLSession sharedSession]
@@ -119,7 +119,7 @@ static id new_prismMenuView_init3(id self, SEL _cmd, NSArray *elements, id heade
 
             void (^present)(NSURL *) = ^(NSURL *url) {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    [pill setText:@"Done!"];
+                    [pill setText:SCILocalized(@"Done!")];
                     [pill dismissAfterDelay:0.5];
                     [SCIUtils showShareVC:url];
                 });

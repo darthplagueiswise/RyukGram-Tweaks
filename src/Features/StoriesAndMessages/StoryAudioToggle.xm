@@ -118,7 +118,7 @@ extern "C" NSArray *sciMaybeAppendStoryAudioMenuItem(NSArray *items) {
     if (!menuItemCls) return items;
 
     BOOL on = sciIGAudioEnabled();
-    NSString *title = on ? @"Mute story audio" : @"Unmute story audio";
+    NSString *title = on ? SCILocalized(@"Mute story audio") : SCILocalized(@"Unmute story audio");
     void (^handler)(void) = ^{ sciToggleStoryAudio(); };
 
     id newItem = nil;

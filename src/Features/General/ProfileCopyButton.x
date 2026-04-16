@@ -8,8 +8,7 @@
 // a copy button alongside IG's own buttons, then opens a menu to copy
 // username/name/bio.
 
-@interface IGProfileViewController : UIViewController
-@end
+// IGProfileViewController declared in InstagramHeaders.h
 
 static id sci_safeValueForKey(id obj, NSString *key) {
     @try { return [obj valueForKey:key]; }
@@ -107,7 +106,7 @@ static void sci_copyAndToast(NSString *value, NSString *label) {
     NSLog(@"[SCInsta] copy button user=%@ name=%@ bioLen=%lu",
           username, fullName, (unsigned long)biography.length);
 
-    UIAlertController *menu = [UIAlertController alertControllerWithTitle:@"Copy from profile"
+    UIAlertController *menu = [UIAlertController alertControllerWithTitle:SCILocalized(@"Copy from profile")
                                                                   message:nil
                                                            preferredStyle:UIAlertControllerStyleActionSheet];
 
@@ -117,12 +116,12 @@ static void sci_copyAndToast(NSString *value, NSString *label) {
                                                handler:^(UIAlertAction *_) { sci_copyAndToast(username, @"username"); }]];
     }
     if (fullName.length) {
-        [menu addAction:[UIAlertAction actionWithTitle:@"Copy name"
+        [menu addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Copy name")
                                                  style:UIAlertActionStyleDefault
                                                handler:^(UIAlertAction *_) { sci_copyAndToast(fullName, @"name"); }]];
     }
     if (biography.length) {
-        [menu addAction:[UIAlertAction actionWithTitle:@"Copy bio"
+        [menu addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Copy bio")
                                                  style:UIAlertActionStyleDefault
                                                handler:^(UIAlertAction *_) { sci_copyAndToast(biography, @"bio"); }]];
     }
@@ -134,16 +133,16 @@ static void sci_copyAndToast(NSString *value, NSString *label) {
 
     if (parts.count >= 2) {
         NSString *combined = [parts componentsJoinedByString:@"\n\n"];
-        [menu addAction:[UIAlertAction actionWithTitle:@"Copy all"
+        [menu addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Copy all")
                                                  style:UIAlertActionStyleDefault
                                                handler:^(UIAlertAction *_) { sci_copyAndToast(combined, @"all"); }]];
     }
 
     if (menu.actions.count == 0) {
-        [menu addAction:[UIAlertAction actionWithTitle:@"Nothing to copy" style:UIAlertActionStyleDefault handler:nil]];
+        [menu addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Nothing to copy") style:UIAlertActionStyleDefault handler:nil]];
     }
 
-    [menu addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [menu addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
 
     if (sender) {
         menu.popoverPresentationController.sourceView = sender;

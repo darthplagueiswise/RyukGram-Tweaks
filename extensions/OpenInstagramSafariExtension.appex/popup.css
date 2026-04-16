@@ -1,0 +1,22 @@
+:root {
+    color-scheme: light dark;
+}
+
+body {
+    width: 220px;
+    padding: 14px 16px;
+    margin: 0;
+    font-family: -apple-system, system-ui, sans-serif;
+    text-align: left;
+}
+
+.title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.subtitle {
+    margin-top: 4px;
+    font-size: 12px;
+    opacity: 0.7;
+}

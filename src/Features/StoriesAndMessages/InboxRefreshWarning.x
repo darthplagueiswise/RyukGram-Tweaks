@@ -97,18 +97,18 @@ static void new_pullToRefresh(id self, SEL _cmd) {
         @"Refreshing the DMs tab will clear %lu preserved unsent message%@. This cannot be undone.",
         (unsigned long)count, count == 1 ? @"" : @"s"];
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Clear preserved messages?"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:SCILocalized(@"Clear preserved messages?")
                                                                   message:msg
                                                            preferredStyle:UIAlertControllerStyleAlert];
 
     __weak UIViewController *weakSelf = vc;
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel
                                             handler:^(UIAlertAction *a) {
         sciCancelRefresh(weakSelf);
         sciRefreshAlertVisible = NO;
     }]];
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Refresh" style:UIAlertActionStyleDestructive
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Refresh") style:UIAlertActionStyleDestructive
                                             handler:^(UIAlertAction *a) {
         sciRefreshAlertVisible = NO;
         id strongSelf = weakSelf;

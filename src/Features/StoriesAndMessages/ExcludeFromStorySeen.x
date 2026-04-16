@@ -221,22 +221,22 @@ NSArray *sciMaybeAppendStoryExcludeMenuItem(NSArray *items) {
     Class menuItemCls = NSClassFromString(@"IGDSMenuItem");
     if (!menuItemCls) return items;
 
-    NSString *addLabel = blockSelected ? @"Add to block list" : @"Exclude story seen";
-    NSString *removeLabel = blockSelected ? @"Remove from block list" : @"Un-exclude story seen";
+    NSString *addLabel = blockSelected ? SCILocalized(@"Add to block list") : SCILocalized(@"Exclude story seen");
+    NSString *removeLabel = blockSelected ? SCILocalized(@"Remove from block list") : SCILocalized(@"Un-exclude story seen");
     NSString *title = inList ? removeLabel : addLabel;
 
     __weak UIViewController *weakVC = sciActiveStoryViewerVC;
     void (^handler)(void) = ^{
         if (inList) {
             [SCIExcludedStoryUsers removePK:pk];
-            [SCIUtils showToastForDuration:2.0 title:blockSelected ? @"Unblocked" : @"Un-excluded"];
+            [SCIUtils showToastForDuration:2.0 title:blockSelected ? SCILocalized(@"Unblocked") : SCILocalized(@"Un-excluded")];
             // Removing in block_selected = normal behavior → mark seen
             if (blockSelected) sciTriggerStoryMarkSeen(weakVC);
         } else {
             [SCIExcludedStoryUsers addOrUpdateEntry:@{
                 @"pk": pk, @"username": username, @"fullName": fullName
             }];
-            [SCIUtils showToastForDuration:2.0 title:blockSelected ? @"Blocked" : @"Excluded"];
+            [SCIUtils showToastForDuration:2.0 title:blockSelected ? SCILocalized(@"Blocked") : SCILocalized(@"Excluded")];
             // Adding in block_all = normal behavior → mark seen
             if (!blockSelected) sciTriggerStoryMarkSeen(weakVC);
         }

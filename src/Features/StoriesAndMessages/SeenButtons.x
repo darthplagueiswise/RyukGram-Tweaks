@@ -73,7 +73,7 @@ static void new_setHasSent(id self, SEL _cmd, BOOL sent) {
 
 // Re-runs setRightBarButtonItems with the live items. The hook tags its own
 // buttons so they get stripped and rebuilt against the new exclusion state.
-static void sciRefreshNavBarItems(UIView *anchor) {
+void sciRefreshNavBarItems(UIView *anchor) {
     if (!anchor || ![anchor respondsToSelector:@selector(setRightBarButtonItems:)]) return;
     NSArray *cur = [(id)anchor performSelector:@selector(rightBarButtonItems)];
     [(id)anchor performSelector:@selector(setRightBarButtonItems:) withObject:cur];
@@ -92,37 +92,50 @@ static UIMenu *sciBuildThreadActionsMenu(UIView *anchor, NSString *threadId, UIW
 
     if (seenFeatureOn && !excluded) {
         BOOL toggleMode = sciIsSeenToggleMode();
-        NSString *title;
-        UIImage *img;
+
+        // Toggle mode: show toggle action + one-shot mark seen
         if (toggleMode) {
-            title = dmSeenToggleEnabled ? @"Disable read receipts" : @"Enable read receipts";
-            img = [UIImage systemImageNamed:dmSeenToggleEnabled ? @"eye.slash" : @"eye"];
-        } else {
-            title = @"Mark messages as seen";
-            img = [UIImage systemImageNamed:@"eye"];
-        }
-        UIAction *seenAction = [UIAction actionWithTitle:title image:img identifier:nil
-                                                 handler:^(__kindof UIAction *_) {
-            UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:anchor];
-            if (![nearestVC isKindOfClass:%c(IGDirectThreadViewController)]) return;
-            if (toggleMode) {
+            NSString *toggleTitle = dmSeenToggleEnabled ? SCILocalized(@"Disable read receipts") : SCILocalized(@"Enable read receipts");
+            UIImage *toggleImg2 = [UIImage systemImageNamed:@"arrow.triangle.2.circlepath"];
+            UIAction *toggleAction = [UIAction actionWithTitle:toggleTitle image:toggleImg2 identifier:nil
+                                                       handler:^(__kindof UIAction *_) {
                 dmSeenToggleEnabled = !dmSeenToggleEnabled;
-                if (dmSeenToggleEnabled) {
+                UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:anchor];
+                if (dmSeenToggleEnabled && [nearestVC isKindOfClass:%c(IGDirectThreadViewController)])
                     [(IGDirectThreadViewController *)nearestVC markLastMessageAsSeen];
-                    [SCIUtils showToastForDuration:2.0 title:@"Read receipts enabled"];
-                } else {
-                    [SCIUtils showToastForDuration:2.0 title:@"Read receipts disabled"];
-                }
-            } else {
-                [(IGDirectThreadViewController *)nearestVC markLastMessageAsSeen];
-                [SCIUtils showToastForDuration:2.0 title:@"Marked messages as seen"];
-            }
-        }];
-        [items addObject:seenAction];
+                [SCIUtils showToastForDuration:2.0 title:dmSeenToggleEnabled ? SCILocalized(@"Read receipts enabled") : SCILocalized(@"Read receipts disabled")];
+                sciRefreshNavBarItems(anchor);
+            }];
+            toggleAction.state = dmSeenToggleEnabled ? UIMenuElementStateOn : UIMenuElementStateOff;
+            [items addObject:toggleAction];
+
+            UIAction *markSeen = [UIAction actionWithTitle:SCILocalized(@"Mark messages as seen")
+                                                     image:[UIImage systemImageNamed:@"checkmark.circle"]
+                                                identifier:nil
+                                                   handler:^(__kindof UIAction *_) {
+                UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:anchor];
+                if ([nearestVC isKindOfClass:%c(IGDirectThreadViewController)])
+                    [(IGDirectThreadViewController *)nearestVC markLastMessageAsSeen];
+                [SCIUtils showToastForDuration:2.0 title:SCILocalized(@"Marked messages as seen")];
+            }];
+            [items addObject:markSeen];
+        } else {
+            // Button mode: just mark seen
+            UIAction *seenAction = [UIAction actionWithTitle:SCILocalized(@"Mark messages as seen")
+                                                       image:[UIImage systemImageNamed:@"checkmark.circle"]
+                                                  identifier:nil
+                                                     handler:^(__kindof UIAction *_) {
+                UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:anchor];
+                if ([nearestVC isKindOfClass:%c(IGDirectThreadViewController)])
+                    [(IGDirectThreadViewController *)nearestVC markLastMessageAsSeen];
+                [SCIUtils showToastForDuration:2.0 title:SCILocalized(@"Marked messages as seen")];
+            }];
+            [items addObject:seenAction];
+        }
     }
 
-    NSString *addLabel = blockSelected ? @"Add to block list" : @"Exclude chat";
-    NSString *removeLabel = blockSelected ? @"Remove from block list" : @"Un-exclude chat";
+    NSString *addLabel = blockSelected ? SCILocalized(@"Add to block list") : SCILocalized(@"Exclude chat");
+    NSString *removeLabel = blockSelected ? SCILocalized(@"Remove from block list") : SCILocalized(@"Un-exclude chat");
     NSString *toggleTitle = inList ? removeLabel : addLabel;
     UIImage *toggleImg = [UIImage systemImageNamed:inList ? @"eye.fill" : @"eye.slash"];
     __weak UIView *weakAnchor = anchor;
@@ -131,7 +144,7 @@ static UIMenu *sciBuildThreadActionsMenu(UIView *anchor, NSString *threadId, UIW
         if (!threadId) return;
         if (inList) {
             [SCIExcludedThreads removeThreadId:threadId];
-            [SCIUtils showToastForDuration:2.0 title:blockSelected ? @"Unblocked" : @"Un-excluded"];
+            [SCIUtils showToastForDuration:2.0 title:blockSelected ? SCILocalized(@"Unblocked") : SCILocalized(@"Un-excluded")];
             // In block_selected, removing = normal behavior → mark seen
             if (blockSelected) {
                 UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:weakAnchor];
@@ -143,7 +156,7 @@ static UIMenu *sciBuildThreadActionsMenu(UIView *anchor, NSString *threadId, UIW
             NSDictionary *entry = sciEntryFromThreadVC(anchorVC);
             if (!entry) entry = @{ @"threadId": threadId, @"threadName": @"", @"isGroup": @NO, @"users": @[] };
             [SCIExcludedThreads addOrUpdateEntry:entry];
-            [SCIUtils showToastForDuration:2.0 title:blockSelected ? @"Blocked" : @"Excluded"];
+            [SCIUtils showToastForDuration:2.0 title:blockSelected ? SCILocalized(@"Blocked") : SCILocalized(@"Excluded")];
             // In block_all, excluding = normal behavior → mark seen
             if (!blockSelected) {
                 UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:weakAnchor];
@@ -156,7 +169,25 @@ static UIMenu *sciBuildThreadActionsMenu(UIView *anchor, NSString *threadId, UIW
     if (excluded) toggle.attributes = UIMenuElementAttributesDestructive;
     [items addObject:toggle];
 
-    UIAction *openSettings = [UIAction actionWithTitle:@"Messages settings"
+    // Unlimited replay toggle
+    if ([SCIUtils getBoolPref:@"unlimited_replay"] && !excluded) {
+        NSString *replayTitle = dmVisualMsgsViewedButtonEnabled
+            ? SCILocalized(@"Visual messages: expiring")
+            : SCILocalized(@"Visual messages: unlimited replay");
+        UIImage *replayImg = [UIImage systemImageNamed:dmVisualMsgsViewedButtonEnabled
+            ? @"photo.badge.checkmark" : @"photo.badge.checkmark.fill"];
+        UIAction *replayAction = [UIAction actionWithTitle:replayTitle image:replayImg identifier:nil
+                                                   handler:^(__kindof UIAction *_) {
+            dmVisualMsgsViewedButtonEnabled = !dmVisualMsgsViewedButtonEnabled;
+            [SCIUtils showToastForDuration:2.0 title:dmVisualMsgsViewedButtonEnabled
+                ? SCILocalized(@"Visual messages will expire") : SCILocalized(@"Unlimited replay enabled")];
+            sciRefreshNavBarItems(anchor);
+        }];
+        replayAction.state = dmVisualMsgsViewedButtonEnabled ? UIMenuElementStateOff : UIMenuElementStateOn;
+        [items addObject:replayAction];
+    }
+
+    UIAction *openSettings = [UIAction actionWithTitle:SCILocalized(@"Messages settings")
                                                  image:[UIImage systemImageNamed:@"gear"]
                                             identifier:nil
                                                handler:^(__kindof UIAction *_) {
@@ -213,16 +244,16 @@ static NSDictionary *sciEntryFromThreadVC(UIViewController *vc) {
     NSDictionary *entry = sciEntryFromThreadVC(nearestVC);
     if (!entry) return;
     UIAlertController *alert = [UIAlertController
-        alertControllerWithTitle:@"Add to block list?"
-                         message:@"Read receipts will be blocked for this chat."
+        alertControllerWithTitle:SCILocalized(@"Add to block list?")
+                         message:SCILocalized(@"Read receipts will be blocked for this chat.")
                   preferredStyle:UIAlertControllerStyleAlert];
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:@"Add" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Add") style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
         [SCIExcludedThreads addOrUpdateEntry:entry];
-        [SCIUtils showToastForDuration:2.0 title:@"Added to block list"];
+        [SCIUtils showToastForDuration:2.0 title:SCILocalized(@"Added to block list")];
         sciRefreshNavBarItems(weakSelf);
     }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     [nearestVC presentViewController:alert animated:YES completion:nil];
 }
 
@@ -232,30 +263,40 @@ static NSDictionary *sciEntryFromThreadVC(UIViewController *vc) {
     if (!tid) return;
 
     BOOL bs = [SCIExcludedThreads isBlockSelectedMode];
-    NSString *alertTitle = bs ? @"Remove from block list?" : @"Un-exclude chat?";
-    NSString *alertMsg = bs ? @"Read receipts will no longer be blocked for this chat."
-                            : @"This chat will resume normal read-receipt behavior.";
+    NSString *alertTitle = bs ? SCILocalized(@"Remove from block list?") : SCILocalized(@"Un-exclude chat?");
+    NSString *alertMsg = bs ? SCILocalized(@"Read receipts will no longer be blocked for this chat.")
+                            : SCILocalized(@"This chat will resume normal read-receipt behavior.");
     UIAlertController *alert = [UIAlertController
         alertControllerWithTitle:alertTitle message:alertMsg preferredStyle:UIAlertControllerStyleAlert];
     __weak typeof(self) weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:@"Remove" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *_) {
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Remove") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *_) {
         [SCIExcludedThreads removeThreadId:tid];
-        [SCIUtils showToastForDuration:2.0 title:@"Removed"];
+        [SCIUtils showToastForDuration:2.0 title:SCILocalized(@"Removed")];
         sciRefreshNavBarItems(weakSelf);
     }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     [nearestVC presentViewController:alert animated:YES completion:nil];
 }
 - (void)setRightBarButtonItems:(NSArray <UIBarButtonItem *> *)items {
-    // Strip our own injected buttons so re-running this hook doesn't dupe them.
+    // Strip our own injected buttons (so re-runs don't dupe) and drop
+    // IGDirectCallButton-backed items when their hide pref is on — some
+    // account variants bundle them into the same platter as our eye btn.
+    BOOL hideVoice = [SCIUtils getBoolPref:@"hide_voice_call_button"];
+    BOOL hideVideo = [SCIUtils getBoolPref:@"hide_video_call_button"];
+    BOOL hideBlend = [SCIUtils getBoolPref:@"hide_reels_blend"];
     NSMutableArray *new_items = [[items filteredArrayUsingPredicate:
         [NSPredicate predicateWithBlock:^BOOL(UIBarButtonItem *value, NSDictionary *_) {
             NSString *aid = value.accessibilityIdentifier;
             if ([aid isEqualToString:@"sci-seen-btn"] ||
                 [aid isEqualToString:@"sci-unex-btn"] ||
                 [aid isEqualToString:@"sci-visual-btn"]) return NO;
-            if ([SCIUtils getBoolPref:@"hide_reels_blend"])
-                return ![aid isEqualToString:@"blend-button"];
+            if (hideBlend && [aid isEqualToString:@"blend-button"]) return NO;
+            UIView *cv = value.customView;
+            if (cv && [cv isKindOfClass:NSClassFromString(@"IGDirectCallButton")]) {
+                NSString *cvAx = cv.accessibilityIdentifier;
+                if (hideVoice && [cvAx isEqualToString:@"audio-call"]) return NO;
+                if (hideVideo && [cvAx isEqualToString:@"video-chat"]) return NO;
+            }
             return YES;
         }]
     ] mutableCopy];
@@ -298,11 +339,15 @@ static NSDictionary *sciEntryFromThreadVC(UIViewController *vc) {
         [new_items addObject:listBtn];
     }
 
-    if ([SCIUtils getBoolPref:@"unlimited_replay"] && !navExcluded) {
-        UIBarButtonItem *dmVisualMsgsViewedButton = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"photo.badge.checkmark"] style:UIBarButtonItemStylePlain target:self action:@selector(dmVisualMsgsViewedButtonHandler:)];
-        dmVisualMsgsViewedButton.accessibilityIdentifier = @"sci-visual-btn";
-        [new_items addObject:dmVisualMsgsViewedButton];
-        [dmVisualMsgsViewedButton setTintColor:dmVisualMsgsViewedButtonEnabled ? SCIUtils.SCIColor_Primary : UIColor.labelColor];
+    // Replay toggle: in eye menu when eye button exists, standalone button otherwise
+    BOOL eyeButtonOn = [SCIUtils getBoolPref:@"remove_lastseen"];
+    if ([SCIUtils getBoolPref:@"unlimited_replay"] && !navExcluded && !eyeButtonOn) {
+        UIBarButtonItem *replayBtn = [[UIBarButtonItem alloc]
+            initWithImage:[UIImage systemImageNamed:dmVisualMsgsViewedButtonEnabled ? @"photo.badge.checkmark" : @"photo.badge.checkmark.fill"]
+                    style:UIBarButtonItemStylePlain target:self action:@selector(sciReplayToggleHandler:)];
+        replayBtn.accessibilityIdentifier = @"sci-visual-btn";
+        replayBtn.tintColor = dmVisualMsgsViewedButtonEnabled ? UIColor.labelColor : SCIUtils.SCIColor_Primary;
+        [new_items addObject:replayBtn];
     }
 
     %orig([new_items copy]);
@@ -318,32 +363,31 @@ static NSDictionary *sciEntryFromThreadVC(UIViewController *vc) {
             UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:self];
             if ([nearestVC isKindOfClass:%c(IGDirectThreadViewController)])
                 [(IGDirectThreadViewController *)nearestVC markLastMessageAsSeen];
-            [SCIUtils showToastForDuration:2.5 title:@"Read receipts enabled"];
+            [SCIUtils showToastForDuration:2.5 title:SCILocalized(@"Read receipts enabled")];
         } else {
-            [SCIUtils showToastForDuration:2.5 title:@"Read receipts disabled"];
+            [SCIUtils showToastForDuration:2.5 title:SCILocalized(@"Read receipts disabled")];
         }
     } else {
         UIViewController *nearestVC = [SCIUtils nearestViewControllerForView:self];
         if ([nearestVC isKindOfClass:%c(IGDirectThreadViewController)]) {
             [(IGDirectThreadViewController *)nearestVC markLastMessageAsSeen];
-            [SCIUtils showToastForDuration:2.5 title:@"Marked messages as seen"];
+            [SCIUtils showToastForDuration:2.5 title:SCILocalized(@"Marked messages as seen")];
         }
     }
+    // Rebuild menu so toggle text updates
+    UIViewController *navNearestVC = [SCIUtils nearestViewControllerForView:self];
+    NSString *tid = sciThreadIdForVC(navNearestVC);
+    sender.menu = sciBuildThreadActionsMenu(self, tid, ((UIView *)self).window);
 }
 
-// ============ DM VISUAL MESSAGES VIEWED BUTTON ============
-
-%new - (void)dmVisualMsgsViewedButtonHandler:(UIBarButtonItem *)sender {
-    if (dmVisualMsgsViewedButtonEnabled) {
-        dmVisualMsgsViewedButtonEnabled = false;
-        [sender setTintColor:UIColor.labelColor];
-        [SCIUtils showToastForDuration:4.5 title:@"Visual messages can be replayed without expiring"];
-    } else {
-        dmVisualMsgsViewedButtonEnabled = true;
-        [sender setTintColor:SCIUtils.SCIColor_Primary];
-        [SCIUtils showToastForDuration:4.5 title:@"Visual messages will now expire after viewing"];
-    }
+%new - (void)sciReplayToggleHandler:(UIBarButtonItem *)sender {
+    dmVisualMsgsViewedButtonEnabled = !dmVisualMsgsViewedButtonEnabled;
+    sender.image = [UIImage systemImageNamed:dmVisualMsgsViewedButtonEnabled ? @"photo.badge.checkmark" : @"photo.badge.checkmark.fill"];
+    sender.tintColor = dmVisualMsgsViewedButtonEnabled ? UIColor.labelColor : SCIUtils.SCIColor_Primary;
+    [SCIUtils showToastForDuration:2.0 title:dmVisualMsgsViewedButtonEnabled
+        ? SCILocalized(@"Visual messages will expire") : SCILocalized(@"Unlimited replay enabled")];
 }
+
 %end
 
 // ============ SEEN BLOCKING LOGIC ============

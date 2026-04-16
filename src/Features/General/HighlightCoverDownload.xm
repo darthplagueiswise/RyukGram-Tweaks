@@ -1,14 +1,11 @@
-// Download highlight cover image from the profile long-press menu.
-// Captures the long-pressed IGStoryTrayCell, finds the IGImageView inside it,
-// and saves the cover using the user's download settings.
+// View highlight cover — opens the cover image in the full-screen media viewer.
 
 #import "../../Utils.h"
 #import "../../Downloader/Download.h"
+#import "../../ActionButton/SCIMediaViewer.h"
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import <substrate.h>
-
-static SCIDownloadDelegate *sciHighlightDl = nil;
 
 // Find the IGStoryTrayCell with an active long-press gesture
 static UIView *sciFindLongPressedCell(UIView *root) {
@@ -46,29 +43,20 @@ static UIImage *sciCoverImageFromCell(UIView *cell) {
     return nil;
 }
 
-static void sciSaveCoverImage(UIImage *image, UIViewController *presenter) {
+static void sciViewCoverImage(UIImage *image) {
     if (!image) {
-        [SCIUtils showErrorHUDWithDescription:@"Could not find cover image"];
+        [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Could not find cover image")];
         return;
     }
 
-    NSString *method = [SCIUtils getStringPref:@"dw_save_action"];
-    if ([method isEqualToString:@"photos"]) {
-        // Save to Photos (respects RyukGram album pref)
-        NSData *data = UIImageJPEGRepresentation(image, 1.0);
-        if (!data) return;
-        NSString *tmpPath = [NSTemporaryDirectory() stringByAppendingPathComponent:
-            [NSString stringWithFormat:@"%@.jpg", [[NSUUID UUID] UUIDString]]];
-        [data writeToFile:tmpPath atomically:YES];
-        NSURL *tmpURL = [NSURL fileURLWithPath:tmpPath];
-        sciHighlightDl = [[SCIDownloadDelegate alloc] initWithAction:saveToPhotos showProgress:NO];
-        [sciHighlightDl downloadDidFinishWithFileURL:tmpURL];
-    } else {
-        // Share sheet
-        UIActivityViewController *activityVC = [[UIActivityViewController alloc]
-            initWithActivityItems:@[image] applicationActivities:nil];
-        if (presenter) [presenter presentViewController:activityVC animated:YES completion:nil];
-    }
+    // Save to temp and open in the media viewer
+    NSData *data = UIImageJPEGRepresentation(image, 1.0);
+    if (!data) return;
+    NSString *tmpPath = [NSTemporaryDirectory() stringByAppendingPathComponent:
+        [NSString stringWithFormat:@"cover_%@.jpg", [[NSUUID UUID] UUIDString]]];
+    [data writeToFile:tmpPath atomically:YES];
+    NSURL *tmpURL = [NSURL fileURLWithPath:tmpPath];
+    [SCIMediaViewer showWithVideoURL:nil photoURL:tmpURL caption:nil];
 }
 
 // Stored reference to the long-pressed cell (captured at presentation time)
@@ -90,16 +78,15 @@ static void new_present(id self, SEL _cmd, id vc, BOOL animated, id completion) 
             if (actions && actions.count >= 2 && actions.count <= 6) {
                 Class actionCls = NSClassFromString(@"IGActionSheetControllerAction");
                 if (actionCls) {
-                    __weak UIViewController *weakSelf = (UIViewController *)self;
                     void (^handler)(void) = ^{
                         UIImage *cover = sciCoverImageFromCell(sciLongPressedHighlightCell);
-                        sciSaveCoverImage(cover, weakSelf);
+                        sciViewCoverImage(cover);
                     };
 
                     SEL initSel = @selector(initWithTitle:subtitle:style:handler:accessibilityIdentifier:accessibilityLabel:);
                     typedef id (*InitFn)(id, SEL, id, id, NSInteger, id, id, id);
                     id newAction = ((InitFn)objc_msgSend)([actionCls alloc], initSel,
-                        @"Download cover", nil, 0, handler, nil, nil);
+                        @"View cover", nil, 0, handler, nil, nil);
 
                     if (newAction) {
                         NSMutableArray *newActions = [actions mutableCopy];

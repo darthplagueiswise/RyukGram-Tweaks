@@ -6,6 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (void)presentExport;
 + (void)presentImport;
++ (void)presentReset;
 
 @end
 

@@ -1,0 +1,905 @@
+/*
+ *  RyukGram — Localizable.strings  (English source of truth)
+ *  -------------------------------------------------------------------------
+ *
+ *  Every user-facing string in RyukGram goes through the macro
+ *      SCILocalized(@"English text here")
+ *  in the Objective-C source. The argument is BOTH the lookup key and the
+ *  English fallback, so if a translation is missing the user still sees
+ *  clean English — nothing ever breaks.
+ *
+ *
+ *  HOW TO ADD A NEW LANGUAGE
+ *  -------------------------------------------------------------------------
+ *
+ *  1. Copy this file into a new folder named after the language code:
+ *         src/Localization/Resources/<code>.lproj/Localizable.strings
+ *     e.g.  ar.lproj  (Arabic)
+ *           es.lproj  (Spanish)
+ *           fr.lproj  (French)
+ *  2. Translate the RIGHT-hand side of every `"key" = "value";` line.
+ *     Do NOT touch the left-hand side — that is the lookup key and must
+ *     stay identical to the English version, otherwise the app will never
+ *     find your translation.
+ *  3. Keep every format specifier (%@, %lu, %d, %lld, %1$@, …) exactly
+ *     as-is, in the same order. If you need to reorder them, switch to
+ *     positional specifiers (%1$@ %2$lu).
+ *  4. Keep embedded quotes escaped with a backslash: \" — and newlines
+ *     as \n.
+ *  5. Open a pull request at https://github.com/faroukbmiled/RyukGram/pulls
+ *     so we can ship the language in the next release.
+ *
+ *
+ *  HOW TO ADD A NEW STRING IN CODE
+ *  -------------------------------------------------------------------------
+ *
+ *  Just wrap the English text with SCILocalized(...) in the .m / .x / .xm
+ *  file — the helper resolves to the English text automatically when no
+ *  translation exists. Then add the same English text as BOTH the key and
+ *  the value inside the matching section below, e.g.
+ *
+ *      "Download all items" = "Download all items";
+ *
+ *  Translators copy that line into their own .lproj and translate only the
+ *  right-hand side.
+ *
+ *
+ *  FILE FORMAT NOTES
+ *  -------------------------------------------------------------------------
+ *
+ *  - UTF-8, LF line endings.
+ *  - Slash-star block comments and double-slash line comments both work.
+ *  - DO NOT nest one slash-star block comment inside another — the
+ *    parser will close the outer block at the first inner close marker
+ *    and every lookup in the file will silently fail.
+ *  - Keys and values are both quoted; every line ends with a semicolon.
+ */
+
+//////////////////////////////////////////////////////////////////////////////
+//               CHROME — TOP BAR, LANGUAGE PICKER, FIRST-RUN               //
+// Shown on the root Settings screen: title, search bar, the globe language //
+// menu, and the one-time welcome alert. These use dotted keys (settings.*) //
+// and are hand-authored rather than extracted from English source.         //
+//////////////////////////////////////////////////////////////////////////////
+
+"settings.firstrun.message" = "In the future: Hold down on the three lines at the top right of your profile page, to re-open RyukGram settings.";
+"settings.firstrun.ok" = "I understand!";
+"settings.firstrun.title" = "RyukGram Settings Info";
+"settings.language.system" = "System default";
+"settings.language.title" = "Language";
+"settings.language.english_only" = "RyukGram currently ships with English only. Other languages are wired up and waiting for translations — help translate into your language by following the short guide in the README.";
+"settings.language.ok" = "OK";
+"settings.language.help_translate" = "Help translate";
+"settings.results.many" = "%lu results";
+"settings.results.none" = "No results";
+"settings.results.one" = "%lu result";
+"settings.search.placeholder" = "Search settings";
+"settings.title" = "RyukGram Settings";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                 GENERAL                                  //
+// Settings → General tab                                                   //
+//////////////////////////////////////////////////////////////////////////////
+
+"Adds a copy option to the comment long-press menu" = "Adds a copy option to the comment long-press menu";
+"Adds a download option for GIF comments" = "Adds a download option for GIF comments";
+"Browser" = "Browser";
+"Comments" = "Comments";
+"Copy comment text" = "Copy comment text";
+"Copy description" = "Copy description";
+"Copy description text fields by long-pressing on them" = "Copy description text fields by long-pressing on them";
+"Date format" = "Date format";
+"Disable app haptics" = "Disable app haptics";
+"Disables haptics/vibrations within the app" = "Disables haptics/vibrations within the app";
+"Do not save recent searches" = "Do not save recent searches";
+"Download GIF comments" = "Download GIF comments";
+"Embed domain" = "Embed domain";
+"Embed domain: %@" = "Embed domain: %@";
+"Enable liquid glass buttons" = "Enable liquid glass buttons";
+"Enable liquid glass surfaces" = "Enable liquid glass surfaces";
+"Enable teen app icons" = "Enable teen app icons";
+"Enables experimental liquid glass buttons" = "Enables experimental liquid glass buttons";
+"Enables liquid glass tab bar, floating navigation, and other UI elements" = "Enables liquid glass tab bar, floating navigation, and other UI elements";
+"Experimental features" = "Experimental features";
+"Focus/distractions" = "Focus/distractions";
+"General" = "General";
+"Hide Meta AI" = "Hide Meta AI";
+"Hide ads" = "Hide ads";
+"Hide explore posts grid" = "Hide explore posts grid";
+"Hide friends map" = "Hide friends map";
+"Hide metrics" = "Hide metrics";
+"Hide notes tray" = "Hide notes tray";
+"Hide trending searches" = "Hide trending searches";
+"Hides all suggested users for you to follow, outside your feed" = "Hides all suggested users for you to follow, outside your feed";
+"Hides like/comment/share counts on posts and reels" = "Hides like/comment/share counts on posts and reels";
+"Hides the friends map icon in the notes tray" = "Hides the friends map icon in the notes tray";
+"Hides the grid of suggested posts on the explore/search tab" = "Hides the grid of suggested posts on the explore/search tab";
+"Hides the meta ai buttons/functionality within the app" = "Hides the meta ai buttons/functionality within the app";
+"Hides the notes tray in the DM inbox" = "Hides the notes tray in the DM inbox";
+"Hides the suggested broadcast channels in direct messages" = "Hides the suggested broadcast channels in direct messages";
+"Hides the trending searches under the explore search bar" = "Hides the trending searches under the explore search bar";
+"Hold down on the Instagram logo to change the app icon" = "Hold down on the Instagram logo to change the app icon";
+"Long press on the eyedropper tool in stories to customize the text color more precisely" = "Long press on the eyedropper tool in stories to customize the text color more precisely";
+"No suggested chats" = "No suggested chats";
+"No suggested users" = "No suggested users";
+"Notes" = "Notes";
+"Open links in external browser" = "Open links in external browser";
+"Opens links in Safari instead of Instagram's in-app browser" = "Opens links in Safari instead of Instagram's in-app browser";
+"Removes Instagram tracking wrappers (l.instagram.com) and UTM/fbclid params from URLs" = "Removes Instagram tracking wrappers (l.instagram.com) and UTM/fbclid params from URLs";
+"Removes all ads from the Instagram app" = "Removes all ads from the Instagram app";
+"Removes igsh, utm_source, and other tracking parameters from shared links" = "Removes igsh, utm_source, and other tracking parameters from shared links";
+"Replace IG's relative timestamps (\"3d ago\") with a custom format. Toggle which surfaces it applies to inside the picker." = "Replace IG's relative timestamps (\"3d ago\") with a custom format. Toggle which surfaces it applies to inside the picker.";
+"Replace domain in shared links" = "Replace domain in shared links";
+"Rewrites copied/shared links to use an embed-friendly domain for previews in Discord, Telegram, etc." = "Rewrites copied/shared links to use an embed-friendly domain for previews in Discord, Telegram, etc.";
+"Search bars will no longer save your recent searches" = "Search bars will no longer save your recent searches";
+"Sharing" = "Sharing";
+"Strip tracking from links" = "Strip tracking from links";
+"Strip tracking params" = "Strip tracking params";
+"These features rely on hidden Instagram flags and may not work on all accounts or versions.\nExperimental flags research by @euoradan (Radan)." = "These features rely on hidden Instagram flags and may not work on all accounts or versions.\nExperimental flags research by @euoradan (Radan).";
+"Use detailed color picker" = "Use detailed color picker";
+
+//////////////////////////////////////////////////////////////////////////////
+//                               DATE FORMAT                                //
+// Settings → Date format tab                                               //
+//////////////////////////////////////////////////////////////////////////////
+
+"Alternate" = "Alternate";
+"Always ask" = "Always ask";
+"Balanced" = "Balanced";
+"Block all" = "Block all";
+"Block selected" = "Block selected";
+"Button" = "Button";
+"Classic" = "Classic";
+"Date format — %@" = "Date format — %@";
+"Default" = "Default";
+"Disabled" = "Disabled";
+"Download and share" = "Download and share";
+"Download to Photos" = "Download to Photos";
+"Enabled" = "Enabled";
+"Expand" = "Expand";
+"Explore" = "Explore";
+"Fast" = "Fast";
+"Feed" = "Feed";
+"High" = "High";
+"Inbox" = "Inbox";
+"Low" = "Low";
+"Max" = "Max";
+"Medium" = "Medium";
+"Mute/Unmute" = "Mute/Unmute";
+"Open menu" = "Open menu";
+"Pause/Play" = "Pause/Play";
+"Profile" = "Profile";
+"Quality" = "Quality";
+"Reels" = "Reels";
+"Requires restart" = "Requires restart";
+"Save to Photos" = "Save to Photos";
+"Share sheet" = "Share sheet";
+"Standard" = "Standard";
+"Toggle" = "Toggle";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                   FEED                                   //
+// Settings → Feed tab                                                      //
+//////////////////////////////////////////////////////////////////////////////
+
+"Action button" = "Action button";
+"Adds 'View profile picture' and 'View cover' to story tray long-press menus" = "Adds 'View profile picture' and 'View cover' to story tray long-press menus";
+"Adds a RyukGram action button under each feed post with download/share/copy/expand/repost entries. Tap opens the menu by default; change the tap behavior below." = "Adds a RyukGram action button under each feed post with download/share/copy/expand/repost entries. Tap opens the menu by default; change the tap behavior below.";
+"Controls when and how the feed refreshes. Background refresh occurs when returning to the app after ~10 minutes. Home button refresh occurs when tapping the Home tab while already on it." = "Controls when and how the feed refreshes. Background refresh occurs when returning to the app after ~10 minutes. Home button refresh occurs when tapping the Home tab while already on it.";
+"Default tap action" = "Default tap action";
+"Disable background refresh" = "Disable background refresh";
+"Disable home button refresh" = "Disable home button refresh";
+"Disable home button scroll" = "Disable home button scroll";
+"Disable video autoplay" = "Disable video autoplay";
+"Hide" = "Hide";
+"Hide entire feed" = "Hide entire feed";
+"Hide repost button" = "Hide repost button";
+"Hide stories tray" = "Hide stories tray";
+"Hide suggested stories" = "Hide suggested stories";
+"Hides suggested accounts" = "Hides suggested accounts";
+"Hides suggested reels" = "Hides suggested reels";
+"Hides suggested threads posts" = "Hides suggested threads posts";
+"Hides the repost button on feed posts" = "Hides the repost button on feed posts";
+"Hides the story tray at the top" = "Hides the story tray at the top";
+"Inserts a button row below like/comment/share on each post" = "Inserts a button row below like/comment/share on each post";
+"Long press on media to expand in full-screen viewer" = "Long press on media to expand in full-screen viewer";
+"Media" = "Media";
+"Media zoom" = "Media zoom";
+"No suggested for you" = "No suggested for you";
+"No suggested posts" = "No suggested posts";
+"No suggested reels" = "No suggested reels";
+"No suggested threads" = "No suggested threads";
+"Prevents feed from reloading when returning from background" = "Prevents feed from reloading when returning from background";
+"Prevents videos from playing automatically" = "Prevents videos from playing automatically";
+"Refresh" = "Refresh";
+"Removes all content from your home feed" = "Removes all content from your home feed";
+"Removes suggested accounts from the stories tray" = "Removes suggested accounts from the stories tray";
+"Removes suggested posts" = "Removes suggested posts";
+"Scroll to top without refreshing when tapping Home" = "Scroll to top without refreshing when tapping Home";
+"Show action button" = "Show action button";
+"Stories tray" = "Stories tray";
+"Tapping Home does nothing when already on feed" = "Tapping Home does nothing when already on feed";
+"Tray long-press actions" = "Tray long-press actions";
+"What happens on a single tap. Long-press always opens the full menu" = "What happens on a single tap. Long-press always opens the full menu";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                  REELS                                   //
+// Settings → Reels tab                                                     //
+//////////////////////////////////////////////////////////////////////////////
+
+"Adds a RyukGram action button above the reel sidebar with view-cover/download/share/copy/expand/repost entries. Tap opens the menu by default; change the tap behavior below." = "Adds a RyukGram action button above the reel sidebar with view-cover/download/share/copy/expand/repost entries. Tap opens the menu by default; change the tap behavior below.";
+"Always show progress scrubber" = "Always show progress scrubber";
+"Change what happens when you tap on a reel" = "Change what happens when you tap on a reel";
+"Confirm reel refresh" = "Confirm reel refresh";
+"Disable auto-unmuting reels" = "Disable auto-unmuting reels";
+"Disable scrolling reels" = "Disable scrolling reels";
+"Disable tab button refresh" = "Disable tab button refresh";
+"Doom scrolling limit" = "Doom scrolling limit";
+"Forces the progress bar to appear on every reel" = "Forces the progress bar to appear on every reel";
+"Hide reels header" = "Hide reels header";
+"Hides the repost button on the reels sidebar" = "Hides the repost button on the reels sidebar";
+"Hides the top navigation bar when watching reels" = "Hides the top navigation bar when watching reels";
+"Hiding" = "Hiding";
+"Limits" = "Limits";
+"Limits the amount of reels available to scroll at any given time, and prevents refreshing" = "Limits the amount of reels available to scroll at any given time, and prevents refreshing";
+"Only loads %@ %@" = "Only loads %@ %@";
+"Places a button above the like/comment/share column on each reel" = "Places a button above the like/comment/share column on each reel";
+"Prevent doom scrolling" = "Prevent doom scrolling";
+"Prevents reels from being scrolled to the next video" = "Prevents reels from being scrolled to the next video";
+"Prevents reels from unmuting when the volume/silent button is pressed" = "Prevents reels from unmuting when the volume/silent button is pressed";
+"Shows an alert when you trigger a reels refresh" = "Shows an alert when you trigger a reels refresh";
+"Shows buttons to reveal and auto-fill the password on locked reels" = "Shows buttons to reveal and auto-fill the password on locked reels";
+"Tap Controls" = "Tap Controls";
+"Tapping the Reels tab while on reels does nothing" = "Tapping the Reels tab while on reels does nothing";
+"Unlock password-locked reels" = "Unlock password-locked reels";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                 PROFILE                                  //
+// Settings → Profile tab                                                   //
+//////////////////////////////////////////////////////////////////////////////
+
+"Adds a button next to the burger menu on profiles to copy username, name or bio" = "Adds a button next to the burger menu on profiles to copy username, name or bio";
+"Adds a view option to the highlight long-press menu to open the cover in full-screen" = "Adds a view option to the highlight long-press menu to open the cover in full-screen";
+"Copy note on long press" = "Copy note on long press";
+"Follow indicator" = "Follow indicator";
+"Long press a profile picture to open it in full-screen with zoom, share, and save" = "Long press a profile picture to open it in full-screen with zoom, share, and save";
+"Long press the note bubble on a profile to copy the text" = "Long press the note bubble on a profile to copy the text";
+"Long press to download directly (ignored when zoom is on)" = "Long press to download directly (ignored when zoom is on)";
+"Long-press gestures on profile elements — kept separate from the per-feature action buttons." = "Long-press gestures on profile elements — kept separate from the per-feature action buttons.";
+"Profile copy button" = "Profile copy button";
+"Save profile picture" = "Save profile picture";
+"Shows whether the profile user follows you" = "Shows whether the profile user follows you";
+"View highlight cover" = "View highlight cover";
+"Zoom profile photo" = "Zoom profile photo";
+
+//////////////////////////////////////////////////////////////////////////////
+//                            SAVING & DOWNLOADS                            //
+// Settings → Saving tab                                                    //
+//////////////////////////////////////////////////////////////////////////////
+
+"Confirm before download" = "Confirm before download";
+"Deprecated. The RyukGram action button (configured per feature in Feed/Reels/Stories) is the new way to download media. Enable this master toggle only if you prefer the old multi-finger long-press directly on the media." = "Deprecated. The RyukGram action button (configured per feature in Feed/Reels/Stories) is the new way to download media. Enable this master toggle only if you prefer the old multi-finger long-press directly on the media.";
+"Downloads" = "Downloads";
+"Downloads with %@ %@" = "Downloads with %@ %@";
+"Enable long-press gesture" = "Enable long-press gesture";
+"Finger count for long-press" = "Finger count for long-press";
+"Legacy long-press gesture" = "Legacy long-press gesture";
+"Long-press hold time" = "Long-press hold time";
+"Master toggle for the deprecated gesture workflow (off by default)" = "Master toggle for the deprecated gesture workflow (off by default)";
+"Press finger(s) for %@ %@" = "Press finger(s) for %@ %@";
+"Route saves into a dedicated album in Photos instead of the camera roll root" = "Route saves into a dedicated album in Photos instead of the camera roll root";
+"Save action" = "Save action";
+"Save to RyukGram album" = "Save to RyukGram album";
+"Saving" = "Saving";
+"Show a confirmation dialog before starting a download" = "Show a confirmation dialog before starting a download";
+"What happens after the gesture downloads" = "What happens after the gesture downloads";
+"When \"Save to RyukGram album\" is on, downloads and share-sheet \"Save to Photos\" picks are routed into a dedicated \"RyukGram\" album in your Photos library." = "When \"Save to RyukGram album\" is on, downloads and share-sheet \"Save to Photos\" picks are routed into a dedicated \"RyukGram\" album in your Photos library.";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                 STORIES                                  //
+// Settings → Stories tab                                                   //
+//////////////////////////////////////////////////////////////////////////////
+
+"Adds a RyukGram action button next to the eye button on stories with download/share/copy/expand/repost/view-mentions entries. Tap opens the menu by default; change the tap behavior below." = "Adds a RyukGram action button next to the eye button on stories with download/share/copy/expand/repost/view-mentions entries. Tap opens the menu by default; change the tap behavior below.";
+"Adds a speaker button to the story overlay to unmute/mute audio. Also available in the 3-dot menu" = "Adds a speaker button to the story overlay to unmute/mute audio. Also available in the 3-dot menu";
+"Advance on story like" = "Advance on story like";
+"Advance on story reply" = "Advance on story reply";
+"Advance when marking as seen" = "Advance when marking as seen";
+"Audio" = "Audio";
+"Block all: all stories blocked — listed users are exceptions.\nBlock selected: only listed users are blocked — everything else is normal.\nBoth lists are saved independently." = "Block all: all stories blocked — listed users are exceptions.\nBlock selected: only listed users are blocked — everything else is normal.\nBoth lists are saved independently.";
+"Blocking mode" = "Blocking mode";
+"Button = single-tap mark seen. Toggle = tap toggles story read receipts on/off (eye fills blue when on)" = "Button = single-tap mark seen. Toggle = tap toggles story read receipts on/off (eye fills blue when on)";
+"Disable instants creation" = "Disable instants creation";
+"Disable story seen receipt" = "Disable story seen receipt";
+"Enable story user list" = "Enable story user list";
+"Hides the functionality to create/send instants" = "Hides the functionality to create/send instants";
+"Hides the notification for others when you view their story" = "Hides the notification for others when you view their story";
+"Inserts a button next to the seen/eye button on story overlays" = "Inserts a button next to the seen/eye button on story overlays";
+"Keep stories visually unseen" = "Keep stories visually unseen";
+"Liking a story automatically advances to the next one after a short delay" = "Liking a story automatically advances to the next one after a short delay";
+"Manage list" = "Manage list";
+"Manage list (%lu)" = "Manage list (%lu)";
+"Manual seen button mode" = "Manual seen button mode";
+"Mark seen on story like" = "Mark seen on story like";
+"Mark seen on story reply" = "Mark seen on story reply";
+"Marks a story as seen the moment you tap the heart, even with seen blocking on" = "Marks a story as seen the moment you tap the heart, even with seen blocking on";
+"Marks a story as seen when you send a reply or emoji reaction, even with seen blocking on" = "Marks a story as seen when you send a reply or emoji reaction, even with seen blocking on";
+"Master toggle. When off, the list is ignored" = "Master toggle. When off, the list is ignored";
+"Other" = "Other";
+"Playback" = "Playback";
+"Prevents stories from visually marking as seen in the tray (keeps colorful ring)" = "Prevents stories from visually marking as seen in the tray (keeps colorful ring)";
+"Quick list button in stories" = "Quick list button in stories";
+"Search, sort, swipe to remove" = "Search, sort, swipe to remove";
+"Seen receipts" = "Seen receipts";
+"Sending a reply or emoji reaction automatically advances to the next story" = "Sending a reply or emoji reaction automatically advances to the next story";
+"Show mentioned users in eye button and story menu" = "Show mentioned users in eye button and story menu";
+"Shows an eye button on stories to add/remove users from the list. Off = use the 3-dot menu or long-press only" = "Shows an eye button on stories to add/remove users from the list. Off = use the 3-dot menu or long-press only";
+"Stop story auto-advance" = "Stop story auto-advance";
+"Stories" = "Stories";
+"Stories won't auto-skip to the next one when the timer ends. Tap to advance manually" = "Stories won't auto-skip to the next one when the timer ends. Tap to advance manually";
+"Story audio toggle" = "Story audio toggle";
+"Story user list" = "Story user list";
+"Tapping the eye button to mark a story as seen advances to the next story automatically" = "Tapping the eye button to mark a story as seen advances to the next story automatically";
+"View story mentions" = "View story mentions";
+"Which stories get seen-receipt blocking" = "Which stories get seen-receipt blocking";
+
+//////////////////////////////////////////////////////////////////////////////
+//                         MESSAGES — READ RECEIPTS                         //
+// Settings → Read receipts tab                                             //
+//////////////////////////////////////////////////////////////////////////////
+
+"Adds a button to DM threads to mark messages as seen" = "Adds a button to DM threads to mark messages as seen";
+"Auto mark seen on interact" = "Auto mark seen on interact";
+"Auto mark seen on typing" = "Auto mark seen on typing";
+"Control when messages are marked as seen" = "Control when messages are marked as seen";
+"How the seen button behaves" = "How the seen button behaves";
+"Manually mark messages as seen" = "Manually mark messages as seen";
+"Marks messages as seen when you send any message" = "Marks messages as seen when you send any message";
+"Marks messages as seen when you start typing" = "Marks messages as seen when you start typing";
+"Read receipt mode" = "Read receipt mode";
+"Read receipts" = "Read receipts";
+
+//////////////////////////////////////////////////////////////////////////////
+//                         MESSAGES — KEEP DELETED                          //
+// Settings → Keep deleted messages tab                                     //
+//////////////////////////////////////////////////////////////////////////////
+
+"Activity" = "Activity";
+"Adds a 'Download' option to the long-press menu on voice messages to save them as M4A audio" = "Adds a 'Download' option to the long-press menu on voice messages to save them as M4A audio";
+"Adds a 'Send File' option to the plus menu in DMs. Supported file types may be limited by Instagram" = "Adds a 'Send File' option to the plus menu in DMs. Supported file types may be limited by Instagram";
+"Adds an 'Audio File' option to the plus menu in DMs to send audio files as voice messages" = "Adds an 'Audio File' option to the plus menu in DMs to send audio files as voice messages";
+"Adds copy text, download GIF/audio to the note long-press menu" = "Adds copy text, download GIF/audio to the note long-press menu";
+"Block all: all chats blocked — listed chats are exceptions.\nBlock selected: only listed chats are blocked — everything else is normal.\nBoth lists are saved independently. Long-press a chat in the inbox to add or remove." = "Block all: all chats blocked — listed chats are exceptions.\nBlock selected: only listed chats are blocked — everything else is normal.\nBoth lists are saved independently. Long-press a chat in the inbox to add or remove.";
+"Block keep-deleted for excluded chats" = "Block keep-deleted for excluded chats";
+"Block keep-deleted for unlisted chats" = "Block keep-deleted for unlisted chats";
+"Chat list" = "Chat list";
+"Confirmation dialog before clearing preserved messages" = "Confirmation dialog before clearing preserved messages";
+"Copies note text directly on long press without opening the menu" = "Copies note text directly on long press without opening the menu";
+"Copy text on hold" = "Copy text on hold";
+"Custom emojis and background/text colors" = "Custom emojis and background/text colors";
+"Custom note themes" = "Custom note themes";
+"Disable disappearing mode swipe" = "Disable disappearing mode swipe";
+"Disable screenshot detection" = "Disable screenshot detection";
+"Disable typing status" = "Disable typing status";
+"Disable view-once limitations" = "Disable view-once limitations";
+"Download voice messages" = "Download voice messages";
+"Enable chat list" = "Enable chat list";
+"Enable note theming" = "Enable note theming";
+"Enables the notes theme picker" = "Enables the notes theme picker";
+"Files" = "Files";
+"Full last active date" = "Full last active date";
+"Hide reels blend button" = "Hide reels blend button";
+"Hide video call button" = "Hide video call button";
+"Hide voice call button" = "Hide voice call button";
+"Hides the blend button in DMs" = "Hides the blend button in DMs";
+"Hides typing indicator from others" = "Hides typing indicator from others";
+"Indicate unsent messages" = "Indicate unsent messages";
+"Keep deleted messages" = "Keep deleted messages";
+"Makes view-once messages behave like normal visual messages (loopable/pauseable)" = "Makes view-once messages behave like normal visual messages (loopable/pauseable)";
+"Note actions" = "Note actions";
+"Preserve messages that others unsend" = "Preserve messages that others unsend";
+"Preserves messages that others unsend" = "Preserves messages that others unsend";
+"Prevents accidental swipe-up activation of disappearing mode" = "Prevents accidental swipe-up activation of disappearing mode";
+"Quick list button in chats" = "Quick list button in chats";
+"Removes the audio call button from DM thread header" = "Removes the audio call button from DM thread header";
+"Removes the screenshot-prevention features for visual messages in DMs" = "Removes the screenshot-prevention features for visual messages in DMs";
+"Removes the video call button from DM thread header" = "Removes the video call button from DM thread header";
+"Replay visual messages without expiring. Toggle in the eye button menu, or as a standalone button when the eye button is disabled" = "Replay visual messages without expiring. Toggle in the eye button menu, or as a standalone button when the eye button is disabled";
+"Search, sort, swipe to remove or toggle keep-deleted" = "Search, sort, swipe to remove or toggle keep-deleted";
+"Send audio as file" = "Send audio as file";
+"Send files (experimental)" = "Send files (experimental)";
+"Show full date instead of \"Active 2h ago\"" = "Show full date instead of \"Active 2h ago\"";
+"Shows a button in DM threads to add/remove chats from the list. Long-press for more options" = "Shows a button in DM threads to add/remove chats from the list. Long-press for more options";
+"Shows a notification pill when a message is unsent" = "Shows a notification pill when a message is unsent";
+"Shows an \"Unsent\" label on preserved messages" = "Shows an \"Unsent\" label on preserved messages";
+"Unlimited replay of visual messages" = "Unlimited replay of visual messages";
+"Unsent message notification" = "Unsent message notification";
+"Visual messages" = "Visual messages";
+"Voice messages" = "Voice messages";
+"Warn before clearing on refresh" = "Warn before clearing on refresh";
+"Which chats get read-receipt blocking" = "Which chats get read-receipt blocking";
+"⚠️ Pull-to-refresh in the DMs tab clears all preserved messages. Enable the warning below to get a confirmation dialog." = "⚠️ Pull-to-refresh in the DMs tab clears all preserved messages. Enable the warning below to get a confirmation dialog.";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                 MESSAGES                                 //
+// Settings → Messages tab                                                  //
+//////////////////////////////////////////////////////////////////////////////
+
+"Messages" = "Messages";
+"Threads" = "Threads";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                NAVIGATION                                //
+// Settings → Navigation tab                                                //
+//////////////////////////////////////////////////////////////////////////////
+
+"Hide create tab" = "Hide create tab";
+"Hide explore tab" = "Hide explore tab";
+"Hide feed tab" = "Hide feed tab";
+"Hide messages tab" = "Hide messages tab";
+"Hide reels tab" = "Hide reels tab";
+"Hides every tab except DM inbox + profile and forces launch into the inbox. Settings shortcut moves to long-press on the inbox tab." = "Hides every tab except DM inbox + profile and forces launch into the inbox. Settings shortcut moves to long-press on the inbox tab.";
+"Hides the create tab on the bottom navigation bar" = "Hides the create tab on the bottom navigation bar";
+"Hides the direct messages tab on the bottom navigation bar" = "Hides the direct messages tab on the bottom navigation bar";
+"Hides the explore/search tab on the bottom navigation bar" = "Hides the explore/search tab on the bottom navigation bar";
+"Hides the feed/home tab on the bottom navigation bar" = "Hides the feed/home tab on the bottom navigation bar";
+"Hides the reels tab on the bottom navigation bar" = "Hides the reels tab on the bottom navigation bar";
+"Hiding tabs" = "Hiding tabs";
+"Icon order" = "Icon order";
+"Launch tab" = "Launch tab";
+"Lets you swipe to switch between navigation bar tabs" = "Lets you swipe to switch between navigation bar tabs";
+"Messages only" = "Messages only";
+"Messages-only mode" = "Messages-only mode";
+"Navigation" = "Navigation";
+"Swipe between tabs" = "Swipe between tabs";
+"Tab the app opens to. Ignored when Messages-only is on" = "Tab the app opens to. Ignored when Messages-only is on";
+"The order of the icons on the bottom navigation bar" = "The order of the icons on the bottom navigation bar";
+"Turn IG into a DM-only client" = "Turn IG into a DM-only client";
+
+//////////////////////////////////////////////////////////////////////////////
+//                             CONFIRM ACTIONS                              //
+// Settings → Confirm actions tab                                           //
+//////////////////////////////////////////////////////////////////////////////
+
+"Confirm actions" = "Confirm actions";
+"Confirm call" = "Confirm call";
+"Confirm changing theme" = "Confirm changing theme";
+"Confirm follow" = "Confirm follow";
+"Confirm follow requests" = "Confirm follow requests";
+"Confirm like: Posts/Stories" = "Confirm like: Posts/Stories";
+"Confirm like: Reels" = "Confirm like: Reels";
+"Confirm posting comment" = "Confirm posting comment";
+"Confirm repost" = "Confirm repost";
+"Confirm shh mode" = "Confirm shh mode";
+"Confirm sticker interaction" = "Confirm sticker interaction";
+"Confirm unfollow" = "Confirm unfollow";
+"Confirm voice messages" = "Confirm voice messages";
+"Shows an alert to confirm before sending a voice message" = "Shows an alert to confirm before sending a voice message";
+"Shows an alert to confirm before toggling disappearing messages" = "Shows an alert to confirm before toggling disappearing messages";
+"Shows an alert when you accept/decline a follow request" = "Shows an alert when you accept/decline a follow request";
+"Shows an alert when you change a chat theme to confirm" = "Shows an alert when you change a chat theme to confirm";
+"Shows an alert when you click a sticker on someone's story to confirm the action" = "Shows an alert when you click a sticker on someone's story to confirm the action";
+"Shows an alert when you click the audio/video call button to confirm before calling" = "Shows an alert when you click the audio/video call button to confirm before calling";
+"Shows an alert when you click the follow button to confirm the follow" = "Shows an alert when you click the follow button to confirm the follow";
+"Shows an alert when you click the like button on posts or stories to confirm the like" = "Shows an alert when you click the like button on posts or stories to confirm the like";
+"Shows an alert when you click the like button on reels to confirm the like" = "Shows an alert when you click the like button on reels to confirm the like";
+"Shows an alert when you click the post comment button to confirm" = "Shows an alert when you click the post comment button to confirm";
+"Shows an alert when you click the repost button to confirm before resposting" = "Shows an alert when you click the repost button to confirm before resposting";
+"Shows an alert when you click the unfollow button to confirm" = "Shows an alert when you click the unfollow button to confirm";
+
+//////////////////////////////////////////////////////////////////////////////
+//                             BACKUP & RESTORE                             //
+// Settings → Backup & Restore tab                                          //
+//////////////////////////////////////////////////////////////////////////////
+
+"Backup & Restore" = "Backup & Restore";
+"Export settings" = "Export settings";
+"Export your RyukGram settings to a JSON file and import them later. Importing resets all settings to defaults before applying the imported values, and shows a preview before anything changes." = "Export your RyukGram settings to a JSON file and import them later. Importing resets all settings to defaults before applying the imported values, and shows a preview before anything changes.";
+"Import settings" = "Import settings";
+"Load settings from a JSON file" = "Load settings from a JSON file";
+"Reset to defaults" = "Reset to defaults";
+"Revert every RyukGram preference" = "Revert every RyukGram preference";
+"Save settings as a JSON file" = "Save settings as a JSON file";
+
+//////////////////////////////////////////////////////////////////////////////
+//                               EXPERIMENTAL                               //
+// Settings → Experimental tab                                              //
+//////////////////////////////////////////////////////////////////////////////
+
+"Experimental" = "Experimental";
+"These features are unstable and cause the Instagram app to crash unexpectedly.\n\nUse at your own risk!" = "These features are unstable and cause the Instagram app to crash unexpectedly.\n\nUse at your own risk!";
+"Warning" = "Warning";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                 ADVANCED                                 //
+// Settings → Advanced tab                                                  //
+//////////////////////////////////////////////////////////////////////////////
+
+"Advanced" = "Advanced";
+"Automatically opens settings when the app launches" = "Automatically opens settings when the app launches";
+"Disable safe mode" = "Disable safe mode";
+"Enable tweak settings quick-access" = "Enable tweak settings quick-access";
+"Hold on the home tab to open RyukGram settings" = "Hold on the home tab to open RyukGram settings";
+"Instagram" = "Instagram";
+"Pause playback when opening settings" = "Pause playback when opening settings";
+"Pauses any playing video/audio when settings opens" = "Pauses any playing video/audio when settings opens";
+"Prevents Instagram from resetting settings after crashes (at your own risk)" = "Prevents Instagram from resetting settings after crashes (at your own risk)";
+"Reset onboarding state" = "Reset onboarding state";
+"Settings" = "Settings";
+"Show tweak settings on app launch" = "Show tweak settings on app launch";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                  DEBUG                                   //
+// Settings → Debug tab                                                     //
+//////////////////////////////////////////////////////////////////////////////
+
+"Button Cell" = "Button Cell";
+"Change the value on the right" = "Change the value on the right";
+"Debug" = "Debug";
+"Enable FLEX gesture" = "Enable FLEX gesture";
+"Hold 5 fingers on the screen to open FLEX" = "Hold 5 fingers on the screen to open FLEX";
+"I have %@%@" = "I have %@%@";
+"Link Cell" = "Link Cell";
+"Menu Cell" = "Menu Cell";
+"Open FLEX on app focus" = "Open FLEX on app focus";
+"Open FLEX on app launch" = "Open FLEX on app launch";
+"Opens FLEX when the app is focused" = "Opens FLEX when the app is focused";
+"Opens FLEX when the app launches" = "Opens FLEX when the app launches";
+"Static Cell" = "Static Cell";
+"Stepper cell" = "Stepper cell";
+"Switch Cell" = "Switch Cell";
+"Switch Cell (Restart)" = "Switch Cell (Restart)";
+"Tap the switch" = "Tap the switch";
+"Using icon" = "Using icon";
+"Using image" = "Using image";
+"_ Example" = "_ Example";
+
+//////////////////////////////////////////////////////////////////////////////
+//                        DOWNLOADS & MEDIA ACTIONS                         //
+// Action button menus, download/share/copy toasts, quality picker pills.   //
+//////////////////////////////////////////////////////////////////////////////
+
+"%@ settings" = "%@ settings";
+"Cancelled" = "Cancelled";
+"Copied %lu URLs" = "Copied %lu URLs";
+"Copied caption" = "Copied caption";
+"Copied download URL" = "Copied download URL";
+"Copy all URLs" = "Copy all URLs";
+"Copy caption" = "Copy caption";
+"Copy download URL" = "Copy download URL";
+"Could not extract any URLs" = "Could not extract any URLs";
+"Could not extract media URL" = "Could not extract media URL";
+"Could not extract photo URL" = "Could not extract photo URL";
+"Could not extract video URL" = "Could not extract video URL";
+"Done" = "Done";
+"Download all (%lu)" = "Download all (%lu)";
+"Download all stories and share?" = "Download all stories and share?";
+"Download all to Photos" = "Download all to Photos";
+"Download and share all" = "Download and share all";
+"Download and share?" = "Download and share?";
+"Download failed" = "Download failed";
+"Downloaded %lu items" = "Downloaded %lu items";
+"Downloading %@..." = "Downloading %@...";
+"Downloading..." = "Downloading...";
+"Failed to save" = "Failed to save";
+"HD download complete" = "HD download complete";
+"Mute audio" = "Mute audio";
+"No URLs" = "No URLs";
+"No URLs found" = "No URLs found";
+"No caption on this post" = "No caption on this post";
+"No carousel children" = "No carousel children";
+"No cover image" = "No cover image";
+"No files downloaded" = "No files downloaded";
+"No media" = "No media";
+"No media URL" = "No media URL";
+"No media to expand" = "No media to expand";
+"No media to show" = "No media to show";
+"No video URL" = "No video URL";
+"Not a carousel" = "Not a carousel";
+"Nothing to save" = "Nothing to save";
+"Nothing to share" = "Nothing to share";
+"Opening creator..." = "Opening creator...";
+"Photo library access denied" = "Photo library access denied";
+"Photos access denied" = "Photos access denied";
+"Preparing repost..." = "Preparing repost...";
+"Repost" = "Repost";
+"Repost unavailable" = "Repost unavailable";
+"Save all stories to Photos?" = "Save all stories to Photos?";
+"Save failed" = "Save failed";
+"Save to Photos?" = "Save to Photos?";
+"Saved %lu items" = "Saved %lu items";
+"Saved to Photos" = "Saved to Photos";
+"Saved to RyukGram" = "Saved to RyukGram";
+"Tap to cancel" = "Tap to cancel";
+"Unmute audio" = "Unmute audio";
+"View cover" = "View cover";
+"View mentions" = "View mentions";
+
+//////////////////////////////////////////////////////////////////////////////
+//                      STORIES & MESSAGES (FEATURES)                       //
+// Buttons, menu entries, toasts and alerts shown while watching stories or //
+// inside DM threads.                                                       //
+//////////////////////////////////////////////////////////////////////////////
+
+"A message was unsent" = "A message was unsent";
+"Add" = "Add";
+"Add to block list" = "Add to block list";
+"Add to block list?" = "Add to block list?";
+"Added to block list" = "Added to block list";
+"Audio not loaded yet. Play the message first and try again." = "Audio not loaded yet. Play the message first and try again.";
+"Audio sent" = "Audio sent";
+"Audio/Video from Files" = "Audio/Video from Files";
+"Blocked" = "Blocked";
+"Cancel" = "Cancel";
+"Clear preserved messages?" = "Clear preserved messages?";
+"Converting..." = "Converting...";
+"Copy text" = "Copy text";
+"Could not find media" = "Could not find media";
+"Could not find story media" = "Could not find story media";
+"Could not get audio data. Try again after refreshing the chat." = "Could not get audio data. Try again after refreshing the chat.";
+"Could not get video URL" = "Could not get video URL";
+"Disable read receipts" = "Disable read receipts";
+"Done!" = "Done!";
+"Download audio" = "Download audio";
+"Downloading audio..." = "Downloading audio...";
+"Enable read receipts" = "Enable read receipts";
+"Error: %@" = "Error: %@";
+"Exclude chat" = "Exclude chat";
+"Exclude story seen" = "Exclude story seen";
+"Excluded" = "Excluded";
+"Extracting audio..." = "Extracting audio...";
+"Failed to encode GIF" = "Failed to encode GIF";
+"File sending not supported" = "File sending not supported";
+"Follow" = "Follow";
+"Following" = "Following";
+"Mark messages as seen" = "Mark messages as seen";
+"Mark seen" = "Mark seen";
+"Marked as seen" = "Marked as seen";
+"Marked as viewed" = "Marked as viewed";
+"Marked messages as seen" = "Marked messages as seen";
+"Mentions" = "Mentions";
+"Message sender not found" = "Message sender not found";
+"Messages settings" = "Messages settings";
+"Mute story audio" = "Mute story audio";
+"No audio URL found. Try again after refreshing the chat." = "No audio URL found. Try again after refreshing the chat.";
+"No mentions in this story" = "No mentions in this story";
+"No thread key" = "No thread key";
+"No voice send method found" = "No voice send method found";
+"Note not found" = "Note not found";
+"Note text copied" = "Note text copied";
+"Open GitHub" = "Open GitHub";
+"Read receipts disabled" = "Read receipts disabled";
+"Read receipts enabled" = "Read receipts enabled";
+"Read receipts will be blocked for this chat." = "Read receipts will be blocked for this chat.";
+"Read receipts will no longer be blocked for this chat." = "Read receipts will no longer be blocked for this chat.";
+"Remove" = "Remove";
+"Remove from block list" = "Remove from block list";
+"Remove from block list?" = "Remove from block list?";
+"Removed" = "Removed";
+"Save GIF" = "Save GIF";
+"Selection too short (min 0.5s)" = "Selection too short (min 0.5s)";
+"Send Audio" = "Send Audio";
+"Send anyway" = "Send anyway";
+"Send failed: %@" = "Send failed: %@";
+"Send service not found" = "Send service not found";
+"Share" = "Share";
+"Story read receipts disabled" = "Story read receipts disabled";
+"Story read receipts enabled" = "Story read receipts enabled";
+"Story seen receipts will be blocked for @%@." = "Story seen receipts will be blocked for @%@.";
+"This chat will resume normal read-receipt behavior." = "This chat will resume normal read-receipt behavior.";
+"Total: %@" = "Total: %@";
+"Un-exclude" = "Un-exclude";
+"Un-exclude chat" = "Un-exclude chat";
+"Un-exclude chat?" = "Un-exclude chat?";
+"Un-exclude story seen" = "Un-exclude story seen";
+"Un-exclude story seen?" = "Un-exclude story seen?";
+"Un-excluded" = "Un-excluded";
+"Unblock" = "Unblock";
+"Unblocked" = "Unblocked";
+"Unlimited replay enabled" = "Unlimited replay enabled";
+"Unmute story audio" = "Unmute story audio";
+"Unsent" = "Unsent";
+"Upload Audio" = "Upload Audio";
+"VC not found" = "VC not found";
+"Video from Library" = "Video from Library";
+"Visual messages will expire" = "Visual messages will expire";
+"Visual messages: expiring" = "Visual messages: expiring";
+"Visual messages: unlimited replay" = "Visual messages: unlimited replay";
+"Will sync when leaving stories" = "Will sync when leaving stories";
+
+//////////////////////////////////////////////////////////////////////////////
+//                             GENERAL FEATURES                             //
+// Strings inside per-feature overlays: fake location, color picker, notes  //
+// customization, profile copy, etc.                                        //
+//////////////////////////////////////////////////////////////////////////////
+
+"Add location" = "Add location";
+"Add preset" = "Add preset";
+"Change location" = "Change location";
+"Click the Apply button after this to see the emoji" = "Click the Apply button after this to see the emoji";
+"Copied text to clipboard" = "Copied text to clipboard";
+"Copy" = "Copy";
+"Copy all" = "Copy all";
+"Copy bio" = "Copy bio";
+"Copy from profile" = "Copy from profile";
+"Copy name" = "Copy name";
+"Could not find cover image" = "Could not find cover image";
+"Current: %@" = "Current: %@";
+"Disable" = "Disable";
+"Download GIF" = "Download GIF";
+"Enable" = "Enable";
+"Enter Emoji Text" = "Enter Emoji Text";
+"Fake location" = "Fake location";
+"Name" = "Name";
+"Nothing to copy" = "Nothing to copy";
+"Save" = "Save";
+"Save preset" = "Save preset";
+"Saved locations" = "Saved locations";
+"Select color" = "Select color";
+"Set location" = "Set location";
+"Settings…" = "Settings…";
+"Type emoji..." = "Type emoji...";
+"direct-inbox-tab" = "direct-inbox-tab";
+"mainfeed-tab" = "mainfeed-tab";
+
+//////////////////////////////////////////////////////////////////////////////
+//                         SETTINGS VIEWS & DIALOGS                         //
+// Excluded-lists managers, backup/restore flows, in-picker labels.         //
+//////////////////////////////////////////////////////////////////////////////
+
+"Add custom domain" = "Add custom domain";
+"Add preset…" = "Add preset…";
+"All RyukGram settings will be reset to defaults and the imported values applied. The app will need to restart for some changes to take effect." = "All RyukGram settings will be reset to defaults and the imported values applied. The app will need to restart for some changes to take effect.";
+"Apply" = "Apply";
+"Apply imported settings?" = "Apply imported settings?";
+"Apply to" = "Apply to";
+"Chats" = "Chats";
+"Could not read file." = "Could not read file.";
+"Could not write temporary file." = "Could not write temporary file.";
+"Current location" = "Current location";
+"Custom" = "Custom";
+"Date Format" = "Date Format";
+"Delete" = "Delete";
+"Done editing" = "Done editing";
+"Edit values" = "Edit values";
+"Enable fake location" = "Enable fake location";
+"Every RyukGram preference will revert to its built-in default. This can't be undone." = "Every RyukGram preference will revert to its built-in default. This can't be undone.";
+"Excluded chats" = "Excluded chats";
+"Excluded users" = "Excluded users";
+"File is not a valid RyukGram settings export." = "File is not a valid RyukGram settings export.";
+"Follow default" = "Follow default";
+"Force OFF (allow unsends)" = "Force OFF (allow unsends)";
+"Force ON (preserve unsends)" = "Force ON (preserve unsends)";
+"Form view" = "Form view";
+"Format" = "Format";
+"Import failed" = "Import failed";
+"Import preview" = "Import preview";
+"Included chats" = "Included chats";
+"Included users" = "Included users";
+"KD: ON" = "KD: ON";
+"KD: default" = "KD: default";
+"Keep-deleted" = "Keep-deleted";
+"Keep-deleted override" = "Keep-deleted override";
+"Off" = "Off";
+"On" = "On";
+"Presets" = "Presets";
+"Raw JSON view" = "Raw JSON view";
+"Remove Selected" = "Remove Selected";
+"Remove from list" = "Remove from list";
+"Reset" = "Reset";
+"Reset all settings?" = "Reset all settings?";
+"Saved presets are reusable. Tap a preset to make it the active location." = "Saved presets are reusable. Tap a preset to make it the active location.";
+"Search address or place" = "Search address or place";
+"Search by name or username" = "Search by name or username";
+"Search by username or name" = "Search by username or name";
+"Search settings" = "Search settings";
+"Select" = "Select";
+"Select location on map" = "Select location on map";
+"Set current location" = "Set current location";
+"Set keep-deleted override" = "Set keep-deleted override";
+"Settings exported" = "Settings exported";
+"Settings imported" = "Settings imported";
+"Show seconds" = "Show seconds";
+"Sort by" = "Sort by";
+"Story users" = "Story users";
+"Toggle each NSDate formatter IG uses. Different surfaces (feed, comments, stories, DMs) go through different methods — enable the ones you want the custom format applied to." = "Toggle each NSDate formatter IG uses. Different surfaces (feed, comments, stories, DMs) go through different methods — enable the ones you want the custom format applied to.";
+"Use this location" = "Use this location";
+"When on, all CoreLocation requests inside Instagram return the location below." = "When on, all CoreLocation requests inside Instagram return the location below.";
+"When on, all CoreLocation requests inside Instagram return the location below. Toggle the map button to show or hide the quick toggle on the Friends Map view." = "When on, all CoreLocation requests inside Instagram return the location below. Toggle the map button to show or hide the quick toggle on the Friends Map view.";
+"Show map button" = "Show map button";
+
+//////////////////////////////////////////////////////////////////////////////
+//                             REELS (FEATURES)                             //
+// Strings from Reels.                                                      //
+//////////////////////////////////////////////////////////////////////////////
+
+"Copied!" = "Copied!";
+"No password found" = "No password found";
+"No text field found" = "No text field found";
+"Password" = "Password";
+"Refresh Reels?" = "Refresh Reels?";
+
+//////////////////////////////////////////////////////////////////////////////
+//                            PROFILE (FEATURES)                            //
+// Strings from Profile.                                                    //
+//////////////////////////////////////////////////////////////////////////////
+
+"Doesn't follow you" = "Doesn't follow you";
+"Follows you" = "Follows you";
+"Note copied" = "Note copied";
+
+//////////////////////////////////////////////////////////////////////////////
+//                       CONFIRM DIALOGS (IN-FEATURE)                       //
+// Strings from Confirm dialogs.                                            //
+//////////////////////////////////////////////////////////////////////////////
+
+"Unfollow?" = "Unfollow?";
+
+//////////////////////////////////////////////////////////////////////////////
+//                                   MISC                                   //
+// Anything that didn't fit a named section. Usually short labels.          //
+//////////////////////////////////////////////////////////////////////////////
+
+"720p • progressive • fastest" = "720p • progressive • fastest";
+"Are you sure?" = "Are you sure?";
+"Copy audio URL" = "Copy audio URL";
+"Copy quality info" = "Copy quality info";
+"Copy video URL" = "Copy video URL";
+"Could not access reel media" = "Could not access reel media";
+"Could not access reel photo" = "Could not access reel photo";
+"Could not extract photo url from post" = "Could not extract photo url from post";
+"Could not extract photo url from reel" = "Could not extract photo url from reel";
+"Could not extract photo url from story" = "Could not extract photo url from story";
+"Could not extract video url from post" = "Could not extract video url from post";
+"Could not extract video url from reel" = "Could not extract video url from reel";
+"Could not extract video url from story" = "Could not extract video url from story";
+"Download Quality" = "Download Quality";
+"FFmpegKit Debug" = "FFmpegKit Debug";
+"Later" = "Later";
+"No!" = "No!";
+"Restart" = "Restart";
+"Restart required" = "Restart required";
+"Yes" = "Yes";
+"You must restart the app to apply this change" = "You must restart the app to apply this change";
+
+//////////////////////////////////////////////////////////////////////////////
+//                               ABOUT / CREDITS                            //
+// Strings from the About / Credits footer of Settings.                     //
+//////////////////////////////////////////////////////////////////////////////
+
+"%@ — view source, report issues, see releases" = "%@ — view source, report issues, see releases";
+"Credits" = "Credits";
+"Developer" = "Developer";
+"Donate to SoCuul" = "Donate to SoCuul";
+"Original SCInsta developer" = "Original SCInsta developer";
+"Ryuk" = "Ryuk";
+"RyukGram %@\n\nInstagram v%@\n\nBased on SCInsta by SoCuul" = "RyukGram %@\n\nInstagram v%@\n\nBased on SCInsta by SoCuul";
+"RyukGram on GitHub" = "RyukGram on GitHub";
+"SoCuul" = "SoCuul";
+"Support the original developer" = "Support the original developer";
+"View Repo" = "View Repo";
+"View the source code on GitHub" = "View the source code on GitHub";
+
+//////////////////////////////////////////////////////////////////////////////
+//                             HD DOWNLOADS                                 //
+// Enhanced / HD downloads settings (DASH + FFmpegKit encoding).            //
+//////////////////////////////////////////////////////////////////////////////
+
+"Download video at the highest available quality" = "Download video at the highest available quality";
+"Downloads HD video via DASH streams and encodes to H.264. Requires FFmpegKit." = "Downloads HD video via DASH streams and encodes to H.264. Requires FFmpegKit.";
+"Encoding speed" = "Encoding speed";
+"Enhanced downloads" = "Enhanced downloads";
+"FFmpegKit is not available. Install the sideloaded IPA or the _ffmpeg .deb variant to enable." = "FFmpegKit is not available. Install the sideloaded IPA or the _ffmpeg .deb variant to enable.";
+"Faster = lower quality" = "Faster = lower quality";
+"Photo quality" = "Photo quality";
+"Use highest resolution available" = "Use highest resolution available";
+"Video quality" = "Video quality";
+"Which quality to download" = "Which quality to download";
+
+//////////////////////////////////////////////////////////////////////////////
+//                           EXPERIMENTAL / DEBUG                           //
+// Placeholder rows only shown in the experimental settings sandbox.        //
+//////////////////////////////////////////////////////////////////////////////
+
+"Navigation Cell" = "Navigation Cell";
+

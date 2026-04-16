@@ -42,3 +42,11 @@ deploy.sh
 PENDING_CHANGES.md
 PENDING_CHANGES.md.bk
 wrapper/
+scripts/*.py
+scripts/__pycache__/
+
+# FFmpegKit frameworks
+modules/ffmpegkit/
+
+# External reference tweaks
+exp_flags/

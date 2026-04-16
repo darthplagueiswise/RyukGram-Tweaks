@@ -2,7 +2,7 @@
 
 set -e
 
-# Auto-detect THEOS if not set 
+# Auto-detect THEOS if not set
 if [ -z "$THEOS" ]; then
     if [ -d "$HOME/theos" ]; then
         export THEOS="$HOME/theos"
@@ -15,12 +15,89 @@ fi
 CMAKE_OSX_ARCHITECTURES="arm64e;arm64"
 CMAKE_OSX_SYSROOT="iphoneos"
 
+# Copy Localization resources (*.lproj) into a RyukGram.bundle.
+# Arg 1: destination bundle directory (created if missing).
+copy_localization_into_bundle() {
+    local DEST="$1"
+    local SRC="src/Localization/Resources"
+    [ -d "$SRC" ] || return 0
+    mkdir -p "$DEST"
+    for lproj in "$SRC"/*.lproj; do
+        [ -d "$lproj" ] || continue
+        cp -R "$lproj" "$DEST/"
+    done
+}
+
+# Collect all FFmpegKit frameworks for injection
+ffmpegkit_frameworks() {
+    local fws=""
+    if [ -d "modules/ffmpegkit/ffmpegkit.framework" ]; then
+        for fw in modules/ffmpegkit/*.framework; do
+            fws="$fws $fw"
+        done
+    fi
+    echo "$fws"
+}
+
+# Inject RyukGram.bundle into a .deb:
+# - Always: localization lproj resources.
+# - Optional: FFmpegKit frameworks (renamed *_sci to avoid collisions).
+# Path: Library/Application Support/RyukGram.bundle/ — jailbreak dlopens by full
+# path, Feather copies .bundle without injecting load commands for sideload.
+# Arg 1: path to .deb (cwd must be packages/)
+inject_bundle_into_deb() {
+    local BASE_DEB="$1"
+    local TMPDIR=$(mktemp -d)
+    dpkg-deb -R "$BASE_DEB" "$TMPDIR"
+    local DYLIB_DIR=$(find "$TMPDIR" -name "RyukGram.dylib" -exec dirname {} \; | head -1)
+    [ -n "$DYLIB_DIR" ] || { rm -rf "$TMPDIR"; return; }
+
+    local PREFIX=""
+    [[ "$DYLIB_DIR" == *"/var/jb/"* ]] && PREFIX="var/jb/"
+
+    local BUNDLE_DIR="$TMPDIR/${PREFIX}Library/Application Support/RyukGram.bundle"
+    mkdir -p "$BUNDLE_DIR"
+    ( cd .. && copy_localization_into_bundle "$BUNDLE_DIR" )
+
+    if [ -d "../modules/ffmpegkit/ffmpegkit.framework" ]; then
+        for fw in ../modules/ffmpegkit/*.framework; do
+            cp -R "$fw" "$BUNDLE_DIR/"
+        done
+
+        local LIBS="libavutil libavcodec libavformat libavfilter libavdevice libswresample libswscale"
+        for lib in $LIBS; do
+            mv "$BUNDLE_DIR/${lib}.framework" "$BUNDLE_DIR/${lib}_sci.framework"
+            install_name_tool -id "@rpath/${lib}_sci.framework/${lib}" \
+                "$BUNDLE_DIR/${lib}_sci.framework/${lib}"
+        done
+        for target in "$BUNDLE_DIR/ffmpegkit.framework/ffmpegkit" \
+                      "$BUNDLE_DIR"/libav*_sci.framework/libav* \
+                      "$BUNDLE_DIR"/libsw*_sci.framework/libsw*; do
+            [ -f "$target" ] || continue
+            for lib in $LIBS; do
+                install_name_tool -change \
+                    "@rpath/${lib}.framework/${lib}" \
+                    "@rpath/${lib}_sci.framework/${lib}" \
+                    "$target" 2>/dev/null || true
+            done
+        done
+        install_name_tool -add_rpath @loader_path/.. \
+            "$BUNDLE_DIR/ffmpegkit.framework/ffmpegkit" 2>/dev/null || true
+    fi
+
+    dpkg-deb -b "$TMPDIR" "$BASE_DEB"
+    rm -rf "$TMPDIR"
+}
+
 # Build just the dylib (for Feather/manual injection)
 if [ "$1" == "dylib" ];
 then
 
-    make clean 2>/dev/null || true
-    rm -rf .theos
+    # --fast: incremental build (no clean)
+    if [ "$2" != "--fast" ]; then
+        make clean 2>/dev/null || true
+        rm -rf .theos
+    fi
 
     echo -e '\033[1m\033[32mBuilding RyukGram dylib\033[0m'
 
@@ -29,7 +106,10 @@ then
     mkdir -p packages
     cp .theos/obj/debug/RyukGram.dylib packages/RyukGram.dylib
 
-    echo -e "\033[1m\033[32mDone!\033[0m\n\nDylib at: $(pwd)/packages/RyukGram.dylib"
+    # Ship localization bundle next to the dylib so Feather/manual installs work.
+    copy_localization_into_bundle "packages/RyukGram.bundle"
+
+    echo -e "\033[1m\033[32mDone!\033[0m\n\nDylib at: $(pwd)/packages/RyukGram.dylib\nBundle at: $(pwd)/packages/RyukGram.bundle"
 
 # Build sideloaded IPA
 elif [ "$1" == "sideload" ];
@@ -88,9 +168,19 @@ then
     rm -rf .theos
 
     # Check for decrypted Instagram IPA
-    ipaFile="$(find ./packages/ -name '*com.burbn.instagram*.ipa' -type f -exec basename {} \; 2>/dev/null || true)"
+    mkdir -p packages
+    ipaFile="$(find ./packages/ -maxdepth 1 -type f \( -iname '*com.burbn.instagram*.ipa' -o -iname 'Instagram*.ipa' -o -iname '[0-9]*.ipa' \) ! -iname 'RyukGram*.ipa' -exec basename {} \; 2>/dev/null | head -1)"
     if [ -z "${ipaFile}" ]; then
-        echo -e '\033[1m\033[0;31m./packages/com.burbn.instagram.ipa not found.\nPlease put a decrypted Instagram IPA in its path.\033[0m'
+        # Auto-move any Instagram IPA from cwd into packages/
+        cwdIpa="$(find . -maxdepth 1 -type f \( -iname '*com.burbn.instagram*.ipa' -o -iname 'Instagram*.ipa' -o -iname '[0-9]*.ipa' \) 2>/dev/null | head -1)"
+        if [ -n "$cwdIpa" ]; then
+            echo -e "\033[1m\033[32mMoving $(basename "$cwdIpa") → packages/\033[0m"
+            mv "$cwdIpa" packages/
+            ipaFile="$(basename "$cwdIpa")"
+        fi
+    fi
+    if [ -z "${ipaFile}" ]; then
+        echo -e '\033[1m\033[0;31mDecrypted Instagram IPA not found.\nPlace a *com.burbn.instagram*.ipa in ./ or ./packages/.\033[0m'
         exit 1
     fi
 
@@ -128,24 +218,72 @@ then
         exit
     fi
 
-    TWEAKPATH=".theos/obj/debug/RyukGram.dylib"
-    if [ "$2" == "--devquick" ];
-    then
-        # Exclude RyukGram.dylib from IPA for livecontainer quick builds
-        TWEAKPATH=""
+    # Build RyukGram.bundle with renamed frameworks for cyan injection
+    BUNDLE_PATH="packages/RyukGram.bundle"
+    rm -rf "$BUNDLE_PATH"
+    mkdir -p "$BUNDLE_PATH"
+    copy_localization_into_bundle "$BUNDLE_PATH"
+    if [ -d "modules/ffmpegkit/ffmpegkit.framework" ]; then
+        echo -e '\033[1m\033[32mBuilding RyukGram.bundle\033[0m'
+        for fw in modules/ffmpegkit/*.framework; do
+            cp -R "$fw" "$BUNDLE_PATH/"
+        done
+        LIBS="libavutil libavcodec libavformat libavfilter libavdevice libswresample libswscale"
+        for lib in $LIBS; do
+            mv "$BUNDLE_PATH/${lib}.framework" "$BUNDLE_PATH/${lib}_sci.framework"
+            install_name_tool -id "@rpath/${lib}_sci.framework/${lib}" \
+                "$BUNDLE_PATH/${lib}_sci.framework/${lib}"
+        done
+        for target in "$BUNDLE_PATH/ffmpegkit.framework/ffmpegkit" \
+                      "$BUNDLE_PATH"/libav*_sci.framework/libav* \
+                      "$BUNDLE_PATH"/libsw*_sci.framework/libsw*; do
+            [ -f "$target" ] || continue
+            for lib in $LIBS; do
+                install_name_tool -change \
+                    "@rpath/${lib}.framework/${lib}" \
+                    "@rpath/${lib}_sci.framework/${lib}" \
+                    "$target" 2>/dev/null || true
+            done
+        done
+        install_name_tool -add_rpath @loader_path/.. \
+            "$BUNDLE_PATH/ffmpegkit.framework/ffmpegkit" 2>/dev/null || true
     fi
 
-    # Create IPA file
+    TWEAKPATH=".theos/obj/debug/RyukGram.dylib"
+    if [ "$2" == "--devquick" ]; then TWEAKPATH=""; fi
+
+    BUNDLE_ARG=""
+    [ -d "$BUNDLE_PATH" ] && BUNDLE_ARG="$BUNDLE_PATH"
+
+    # Create IPA: cyan injects dylib + copies RyukGram.bundle to app root
     echo -e '\033[1m\033[32mCreating the IPA file...\033[0m'
     rm -f packages/RyukGram-sideloaded.ipa
-    cyan -i "packages/${ipaFile}" -o packages/RyukGram-sideloaded.ipa -f $TWEAKPATH $FLEXPATH -c $COMPRESSION -m 15.0 -du
+    cyan -i "packages/${ipaFile}" -o packages/RyukGram-sideloaded.ipa -f $TWEAKPATH $FLEXPATH $BUNDLE_ARG -c $COMPRESSION -m 15.0 -du
+
+    # Inject Safari "Open in Instagram" extension into Payload/*.app/PlugIns/
+    # before ipapatch re-signs, so instagram.com links open the app.
+    APPEX_SRC="extensions/OpenInstagramSafariExtension.appex"
+    if [ -d "$APPEX_SRC" ]; then
+        echo -e '\033[1m\033[32mEmbedding Safari extension\033[0m'
+        INJECT_TMP=$(mktemp -d)
+        unzip -q packages/RyukGram-sideloaded.ipa -d "$INJECT_TMP"
+        APP_DIR="$(find "$INJECT_TMP/Payload" -maxdepth 1 -type d -name '*.app' | head -1)"
+        if [ -n "$APP_DIR" ]; then
+            mkdir -p "$APP_DIR/PlugIns"
+            rm -rf "$APP_DIR/PlugIns/OpenInstagramSafariExtension.appex"
+            cp -R "$APPEX_SRC" "$APP_DIR/PlugIns/"
+            ( cd "$INJECT_TMP" && zip -qr -${COMPRESSION} ../repacked.ipa Payload )
+            mv "$INJECT_TMP/../repacked.ipa" packages/RyukGram-sideloaded.ipa
+        fi
+        rm -rf "$INJECT_TMP"
+    fi
 
     # Patch IPA for sideloading
     ipapatch --input "packages/RyukGram-sideloaded.ipa" --inplace --noconfirm
 
     echo -e "\033[1m\033[32mDone, enjoy RyukGram!\033[0m\n\nYou can find the ipa file at: $(pwd)/packages"
 
-# Build rootless .deb
+# Build rootless .deb with FFmpegKit
 elif [ "$1" == "rootless" ];
 then
 
@@ -157,9 +295,20 @@ then
     export THEOS_PACKAGE_SCHEME=rootless
     make package
 
+    echo -e '\033[1m\033[32mInjecting RyukGram.bundle (localization + FFmpegKit) into deb\033[0m'
+    cd packages
+    BASE_DEB="$(ls -t *.deb | head -n1)"
+    if [ -n "$BASE_DEB" ]; then
+        inject_bundle_into_deb "$BASE_DEB"
+        NEW_NAME="${BASE_DEB%.deb}-rootless.deb"
+        mv "$BASE_DEB" "$NEW_NAME"
+    fi
+    cd ..
+    [ -d "modules/ffmpegkit/ffmpegkit.framework" ] || echo -e '\033[0;33mFFmpegKit not found — deb built without FFmpegKit.\033[0m'
+
     echo -e "\033[1m\033[32mDone, enjoy RyukGram!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
 
-# Build rootful .deb
+# Build rootful .deb with FFmpegKit
 elif [ "$1" == "rootful" ];
 then
 
@@ -170,6 +319,17 @@ then
 
     unset THEOS_PACKAGE_SCHEME
     make package
+
+    echo -e '\033[1m\033[32mInjecting RyukGram.bundle (localization + FFmpegKit) into deb\033[0m'
+    cd packages
+    BASE_DEB="$(ls -t *.deb | head -n1)"
+    if [ -n "$BASE_DEB" ]; then
+        inject_bundle_into_deb "$BASE_DEB"
+        NEW_NAME="${BASE_DEB%.deb}-rootful.deb"
+        mv "$BASE_DEB" "$NEW_NAME"
+    fi
+    cd ..
+    [ -d "modules/ffmpegkit/ffmpegkit.framework" ] || echo -e '\033[0;33mFFmpegKit not found — deb built without FFmpegKit.\033[0m'
 
     echo -e "\033[1m\033[32mDone, enjoy RyukGram!\033[0m\n\nYou can find the deb file at: $(pwd)/packages"
 
@@ -182,7 +342,7 @@ else
     echo
     echo '  dylib     - Build the dylib only (for Feather/manual injection)'
     echo '  sideload  - Build a patched IPA (requires cyan + ipapatch + decrypted IPA)'
-    echo '  rootless  - Build a rootless .deb package'
-    echo '  rootful   - Build a rootful .deb package'
+    echo '  rootless  - Build a rootless .deb package (with FFmpegKit)'
+    echo '  rootful   - Build a rootful .deb package (with FFmpegKit)'
     exit 1
 fi

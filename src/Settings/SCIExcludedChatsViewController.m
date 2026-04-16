@@ -16,12 +16,12 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"Chats";
+    self.title = SCILocalized(@"Chats");
     self.view.backgroundColor = [UIColor systemBackgroundColor];
 
     self.searchBar = [[UISearchBar alloc] init];
     self.searchBar.delegate = self;
-    self.searchBar.placeholder = @"Search by name or username";
+    self.searchBar.placeholder = SCILocalized(@"Search by name or username");
     [self.searchBar sizeToFit];
 
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
@@ -51,7 +51,7 @@
         initWithImage:[UIImage systemImageNamed:@"arrow.up.arrow.down"]
                 style:UIBarButtonItemStylePlain target:self action:@selector(toggleSort)];
     self.editBtn = [[UIBarButtonItem alloc]
-        initWithTitle:@"Select" style:UIBarButtonItemStylePlain target:self action:@selector(toggleEdit)];
+        initWithTitle:SCILocalized(@"Select") style:UIBarButtonItemStylePlain target:self action:@selector(toggleEdit)];
     self.navigationItem.rightBarButtonItems = @[self.editBtn, self.sortBtn];
 
     [self reload];
@@ -60,7 +60,7 @@
 - (void)toggleEdit {
     BOOL entering = !self.tableView.isEditing;
     [self.tableView setEditing:entering animated:YES];
-    self.editBtn.title = entering ? @"Done" : @"Select";
+    self.editBtn.title = entering ? SCILocalized(@"Done") : SCILocalized(@"Select");
     self.editBtn.style = entering ? UIBarButtonItemStyleDone : UIBarButtonItemStylePlain;
     self.batchToolbar.hidden = !entering;
     if (entering) [self updateToolbar];
@@ -68,9 +68,9 @@
 
 - (void)updateToolbar {
     UIBarButtonItem *flex = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-    UIBarButtonItem *del = [[UIBarButtonItem alloc] initWithTitle:@"Remove" style:UIBarButtonItemStylePlain target:self action:@selector(removeSelected)];
+    UIBarButtonItem *del = [[UIBarButtonItem alloc] initWithTitle:SCILocalized(@"Remove") style:UIBarButtonItemStylePlain target:self action:@selector(removeSelected)];
     del.tintColor = [UIColor systemRedColor];
-    UIBarButtonItem *kd = [[UIBarButtonItem alloc] initWithTitle:@"Keep-deleted" style:UIBarButtonItemStylePlain target:self action:@selector(batchKeepDeleted)];
+    UIBarButtonItem *kd = [[UIBarButtonItem alloc] initWithTitle:SCILocalized(@"Keep-deleted") style:UIBarButtonItemStylePlain target:self action:@selector(batchKeepDeleted)];
     self.batchToolbar.items = @[del, flex, kd];
 }
 
@@ -88,7 +88,7 @@
 - (void)batchKeepDeleted {
     NSArray<NSIndexPath *> *sel = self.tableView.indexPathsForSelectedRows;
     if (!sel.count) return;
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Set keep-deleted override" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:SCILocalized(@"Set keep-deleted override") message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     void (^apply)(SCIKeepDeletedOverride) = ^(SCIKeepDeletedOverride mode) {
         for (NSIndexPath *ip in sel) {
             NSDictionary *e = self.filtered[ip.row];
@@ -97,22 +97,22 @@
         [self toggleEdit];
         [self reload];
     };
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Follow default" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
+    [sheet addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Follow default") style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
         apply(SCIKeepDeletedOverrideDefault);
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Force ON (preserve unsends)" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
+    [sheet addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Force ON (preserve unsends)") style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
         apply(SCIKeepDeletedOverrideIncluded);
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Force OFF (allow unsends)" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
+    [sheet addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Force OFF (allow unsends)") style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
         apply(SCIKeepDeletedOverrideExcluded);
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [sheet addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.barButtonItem = self.batchToolbar.items.lastObject;
     [self presentViewController:sheet animated:YES completion:nil];
 }
 
 - (void)toggleSort {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Sort by"
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:SCILocalized(@"Sort by")
                                                                    message:nil
                                                             preferredStyle:UIAlertControllerStyleActionSheet];
     NSArray *titles = @[@"Recently added", @"Name (A–Z)"];
@@ -126,7 +126,7 @@
         if (i == self.sortMode) [a setValue:@YES forKey:@"checked"];
         [sheet addAction:a];
     }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [sheet addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.barButtonItem = self.sortBtn;
     [self presentViewController:sheet animated:YES completion:nil];
 }
@@ -155,7 +155,7 @@
     }
     self.filtered = all;
     BOOL bs = [SCIExcludedThreads isBlockSelectedMode];
-    NSString *label = bs ? @"Included chats" : @"Excluded chats";
+    NSString *label = bs ? SCILocalized(@"Included chats") : SCILocalized(@"Excluded chats");
     self.title = [NSString stringWithFormat:@"%@ (%lu)", label, (unsigned long)self.filtered.count];
     [self.tableView reloadData];
 }
@@ -220,7 +220,7 @@
     NSString *tid = e[@"threadId"];
     UIContextualAction *del = [UIContextualAction
         contextualActionWithStyle:UIContextualActionStyleDestructive
-                            title:@"Remove"
+                            title:SCILocalized(@"Remove")
                           handler:^(UIContextualAction *_, UIView *__, void (^cb)(BOOL)) {
         [SCIExcludedThreads removeThreadId:tid];
         [self reload];
@@ -246,7 +246,7 @@
             if (v == mode) a.state = UIMenuElementStateOn;
             return a;
         };
-        UIMenu *kdMenu = [UIMenu menuWithTitle:@"Keep-deleted override"
+        UIMenu *kdMenu = [UIMenu menuWithTitle:SCILocalized(@"Keep-deleted override")
                                          image:[UIImage systemImageNamed:@"trash.slash"]
                                     identifier:nil
                                        options:0
@@ -255,7 +255,7 @@
             kdAction(@"Force ON (preserve unsends)", SCIKeepDeletedOverrideIncluded),
             kdAction(@"Force OFF (allow unsends)", SCIKeepDeletedOverrideExcluded),
         ]];
-        UIAction *remove = [UIAction actionWithTitle:@"Remove from list"
+        UIAction *remove = [UIAction actionWithTitle:SCILocalized(@"Remove from list")
                                                image:[UIImage systemImageNamed:@"trash"]
                                           identifier:nil
                                              handler:^(__kindof UIAction *_) {
@@ -273,8 +273,8 @@
     SCIKeepDeletedOverride mode = [e[@"keepDeletedOverride"] integerValue];
     SCIKeepDeletedOverride next = (mode + 1) % 3;
     NSString *title = (next == SCIKeepDeletedOverrideExcluded) ? @"KD: OFF"
-                    : (next == SCIKeepDeletedOverrideIncluded) ? @"KD: ON"
-                    : @"KD: default";
+                    : (next == SCIKeepDeletedOverrideIncluded) ? SCILocalized(@"KD: ON")
+                    : SCILocalized(@"KD: default");
     UIContextualAction *toggle = [UIContextualAction
         contextualActionWithStyle:UIContextualActionStyleNormal
                             title:title

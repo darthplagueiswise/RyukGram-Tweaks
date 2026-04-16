@@ -54,12 +54,12 @@ static BOOL sciReelRefreshBypassing = NO;
         ((void(*)(id,SEL))objc_msgSend)(rc, @selector(endRefreshing));
     [self refreshControlDidEndFinishLoadingAnimation:rc];
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Refresh Reels?"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:SCILocalized(@"Refresh Reels?")
                                                                    message:nil
                                                             preferredStyle:UIAlertControllerStyleAlert];
     __weak id weakSelf = self;
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Refresh" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Refresh") style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
         sciReelRefreshBypassing = YES;
         SEL rSel = @selector(_refreshReelsWithParamsForNetworkRequest:userDidPullToRefresh:);
         ((void(*)(id,SEL,NSInteger,BOOL))objc_msgSend)(weakSelf, rSel, arg1, arg2);

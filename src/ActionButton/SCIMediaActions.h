@@ -1,0 +1,98 @@
+// SCIMediaActions — shared media extraction + action handlers for the action menu.
+
+#import <UIKit/UIKit.h>
+#import "../InstagramHeaders.h"
+#import "SCIActionMenu.h"
+
+NS_ASSUME_NONNULL_BEGIN
+
+/// Where the action is being invoked from. Used to target settings entries
+/// and to pick context-specific language in HUDs.
+typedef NS_ENUM(NSInteger, SCIActionContext) {
+    SCIActionContextFeed,
+    SCIActionContextReels,
+    SCIActionContextStories,
+};
+
+@interface SCIMediaActions : NSObject
+
+// MARK: - Media extraction
+
+/// Return the post's caption string. Tries selectors first, falls back to
+/// reading `_fieldCache[@"caption"][@"text"]`.
++ (nullable NSString *)captionForMedia:(id)media;
+
+/// YES if the media is a carousel (multi-photo/video sidecar).
++ (BOOL)isCarouselMedia:(id)media;
+
+/// Ordered children of a carousel IGMedia. Empty array for non-carousels.
++ (NSArray *)carouselChildrenForMedia:(id)media;
+
+/// Best URL for a single (non-carousel) media item. Prefers video URL, falls
+/// back to photo URL. Returns nil if nothing extractable.
++ (nullable NSURL *)bestURLForMedia:(id)media;
+
+/// Cover/poster image URL for a video-type media (first frame). Works for
+/// reels, feed videos, and story videos.
++ (nullable NSURL *)coverURLForMedia:(id)media;
+
+// MARK: - Primary actions (each directly triggerable from a menu entry)
+
+/// Present the media in the native QLPreview UI. Video URLs download first,
+/// images preview directly. Optional caption is shown as a subtitle.
++ (void)expandMedia:(id)media
+        fromView:(UIView *)sourceView
+         caption:(nullable NSString *)caption;
+
+/// Download the best URL for the media and hand off via share sheet.
++ (void)downloadAndShareMedia:(id)media;
+
+/// Download the best URL for the media and save to Photos (respects album pref).
++ (void)downloadAndSaveMedia:(id)media;
+
+/// Copy the direct CDN URL for the media to the clipboard.
++ (void)copyURLForMedia:(id)media;
+
+/// Copy the post caption to the clipboard.
++ (void)copyCaptionForMedia:(id)media;
+
+/// Trigger Instagram's native repost flow for the given context's currently
+/// visible UFI bar. Uses the existing button ivars to avoid reimplementing.
++ (void)triggerRepostForContext:(SCIActionContext)ctx sourceView:(UIView *)sourceView;
+
+/// Open the RyukGram settings page for the given context.
++ (void)openSettingsForContext:(SCIActionContext)ctx fromView:(UIView *)sourceView;
+
+// MARK: - Carousel bulk actions
+
+/// Download every child of a carousel and share as a batch.
++ (void)downloadAllAndShareMedia:(id)carouselMedia;
+
+/// Download every child of a carousel and save to Photos.
++ (void)downloadAllAndSaveMedia:(id)carouselMedia;
+
+/// Copy newline-joined CDN URLs for every child of a carousel.
++ (void)copyAllURLsForMedia:(id)carouselMedia;
+
+// MARK: - Menu builders
+
+// MARK: - Bulk URL download helpers
+
+/// Download an array of URLs in parallel, show pill, call done with file URLs.
++ (void)bulkDownloadURLs:(NSArray<NSURL *> *)urls
+                   title:(NSString *)title
+                    done:(void(^)(NSArray<NSURL *> *fileURLs))done;
+
+/// Save an array of local file URLs to Photos (sequential, respects album pref).
++ (void)bulkSaveFiles:(NSArray<NSURL *> *)files;
+
+/// Build the full action menu for the given context + media + default tap.
+/// If `defaultTap` is provided and non-menu, the builder may reorder or skip
+/// its matching leaf so it's visible in the full menu.
++ (NSArray<SCIAction *> *)actionsForContext:(SCIActionContext)ctx
+                                      media:(nullable id)media
+                                   fromView:(UIView *)sourceView;
+
+@end
+
+NS_ASSUME_NONNULL_END

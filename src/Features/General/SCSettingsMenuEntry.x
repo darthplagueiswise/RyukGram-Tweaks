@@ -30,14 +30,16 @@
 }
 %end
 
-// Quick access to tweak settings by holding on home tab button
+// Quick access to tweak settings by holding on the home tab button.
+// In messages-only mode the home tab is gone — fall back to the inbox tab.
 %hook IGTabBarButton
 - (void)didMoveToSuperview {
     %orig;
 
-    // Only work on home/feed tab
-    if (![self.accessibilityIdentifier isEqualToString:@"mainfeed-tab"]) return;
-    
+    BOOL msgOnly = [SCIUtils getBoolPref:@"messages_only"];
+    NSString *target = msgOnly ? SCILocalized(@"direct-inbox-tab") : SCILocalized(@"mainfeed-tab");
+    if (![self.accessibilityIdentifier isEqualToString:target]) return;
+
     if ([SCIUtils getBoolPref:@"settings_shortcut"]) {
         UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
         longPress.minimumPressDuration = 0.3;

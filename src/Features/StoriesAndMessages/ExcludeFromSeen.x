@@ -74,8 +74,8 @@ static id new_ctxMenuCfg(id self, SEL _cmd, id indexPath) {
         UIMenu *base = origProvider ? origProvider(suggested) : [UIMenu menuWithChildren:suggested];
         BOOL inList = [SCIExcludedThreads isInList:tid];
         BOOL blockSelected = [SCIExcludedThreads isBlockSelectedMode];
-        NSString *addLabel = blockSelected ? @"Add to block list" : @"Exclude chat";
-        NSString *removeLabel = blockSelected ? @"Remove from block list" : @"Un-exclude chat";
+        NSString *addLabel = blockSelected ? SCILocalized(@"Add to block list") : SCILocalized(@"Exclude chat");
+        NSString *removeLabel = blockSelected ? SCILocalized(@"Remove from block list") : SCILocalized(@"Un-exclude chat");
         NSString *title = inList ? removeLabel : addLabel;
         UIImage *img = [UIImage systemImageNamed:inList ? @"eye.fill" : @"eye.slash"];
         UIAction *toggle = [UIAction actionWithTitle:title image:img identifier:nil

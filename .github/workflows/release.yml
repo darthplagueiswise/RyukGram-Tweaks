@@ -65,32 +65,39 @@ jobs:
                 echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
                 echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-            - name: Build dylib
-              run: |
-                export THEOS="${{ github.workspace }}/theos"
-                ./build.sh dylib
-                ls -la packages/
+            - name: Setup FFmpegKit
+              run: ./scripts/setup-ffmpegkit.sh
 
             - name: Build rootless deb
               run: |
                 export THEOS="${{ github.workspace }}/theos"
                 ./build.sh rootless
                 cd packages
-                mv "$(ls -t *.deb | head -n1)" "RyukGram_${VERSION}_rootless.deb"
+                DEB="$(ls -t *-rootless.deb | head -n1)"
+                [ -n "$DEB" ] && mv "$DEB" "RyukGram_${VERSION}_rootless.deb"
                 ls -la
 
-            - name: Upload dylib artifact
-              uses: actions/upload-artifact@v4
-              with:
-                name: RyukGram_v${{ steps.version.outputs.version }}_dylib
-                path: packages/RyukGram.dylib
-                if-no-files-found: error
+            - name: Build rootful deb
+              run: |
+                export THEOS="${{ github.workspace }}/theos"
+                ./build.sh rootful
+                cd packages
+                DEB="$(ls -t *-rootful.deb | head -n1)"
+                [ -n "$DEB" ] && mv "$DEB" "RyukGram_${VERSION}_rootful.deb"
+                ls -la
 
-            - name: Upload deb artifact
+            - name: Upload rootless artifact
               uses: actions/upload-artifact@v4
               with:
                 name: RyukGram_v${{ steps.version.outputs.version }}_rootless
                 path: packages/RyukGram_${{ env.VERSION }}_rootless.deb
+                if-no-files-found: error
+
+            - name: Upload rootful artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: RyukGram_v${{ steps.version.outputs.version }}_rootful
+                path: packages/RyukGram_${{ env.VERSION }}_rootful.deb
                 if-no-files-found: error
 
             - name: Check if release
@@ -105,19 +112,19 @@ jobs:
 
             - name: Generate release notes
               if: steps.check_release.outputs.should_release == 'true'
-              id: notes
               run: |
-                PENDING_FILE="PENDING_CHANGES.md"
                 PREV_TAG=$(git tag --sort=-creatordate | grep -v "v${VERSION}$" | head -n1 || true)
-
                 {
                   echo "## Changelog"
                   echo ""
-                  if [ -f "$PENDING_FILE" ]; then
-                    # Drop the copy-as-commit header lines (HTML comment + [release] token)
-                    # so they don't appear in the published release body.
-                    sed -e '/^<!--/,/-->$/d' -e '/^\[release\]/d' "$PENDING_FILE"
-                  fi
+                  git log -1 --pretty=%B | tail -n +2 | sed -e '/^<!--/,/-->$/d' -e '/^\[release\]/d'
+                  echo ""
+                  echo "## Downloads"
+                  echo ""
+                  echo "| File | Description |"
+                  echo "|------|-------------|"
+                  echo "| \`RyukGram_rootless.deb\` | Rootless .deb (Dopamine/palera1n). Also works for sideloading via Feather/cyan. |"
+                  echo "| \`RyukGram_rootful.deb\` | Rootful .deb (unc0ver/checkra1n). |"
                   echo ""
                   if [ -n "$PREV_TAG" ]; then
                     echo "**Full changelog:** [\`${PREV_TAG}\`...\`v${VERSION}\`](https://github.com/${{ github.repository }}/compare/${PREV_TAG}...v${VERSION})"
@@ -128,16 +135,14 @@ jobs:
 
             - name: Create Release
               if: steps.check_release.outputs.should_release == 'true'
-              id: create_release
               run: |
-                # Strip [release] from commit subject for the release title
                 SUBJECT=$(git log -1 --pretty=%s | sed 's/\[release\]//g' | xargs)
                 TITLE="${SUBJECT:-RyukGram v${VERSION}}"
                 gh release create "v${VERSION}" \
                   --repo "${{ github.repository }}" \
                   --title "$TITLE" \
                   --notes-file /tmp/release_notes.md \
-                  packages/RyukGram.dylib \
-                  "packages/RyukGram_${VERSION}_rootless.deb"
+                  "packages/RyukGram_${VERSION}_rootless.deb" \
+                  "packages/RyukGram_${VERSION}_rootful.deb"
               env:
                 GH_TOKEN: ${{ github.token }}

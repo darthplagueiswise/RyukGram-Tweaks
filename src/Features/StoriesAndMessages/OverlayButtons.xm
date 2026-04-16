@@ -1,7 +1,14 @@
-// Download + mark seen buttons on story/DM visual message overlay
+// Action + mark-seen buttons on story/DM visual message overlay
+// Tags: [1339] eye  [1340] action  [1341] audio
+
 #import "StoryHelpers.h"
 #import "SCIExcludedThreads.h"
 #import "SCIExcludedStoryUsers.h"
+#import "../../ActionButton/SCIActionButton.h"
+#import "../../ActionButton/SCIMediaActions.h"
+#import "../../ActionButton/SCIActionMenu.h"
+#import "../../ActionButton/SCIMediaViewer.h"
+#import "../../Downloader/Download.h"
 
 extern "C" BOOL sciSeenBypassActive;
 extern "C" BOOL sciAdvanceBypassActive;
@@ -18,92 +25,110 @@ extern "C" void sciToggleStoryAudio(void);
 extern "C" BOOL sciIsStoryAudioEnabled(void);
 extern "C" void sciInitStoryAudioState(void);
 extern "C" void sciResetStoryAudioState(void);
+extern "C" void sciShowStoryMentions(UIViewController *, UIView *);
 
-static SCIDownloadDelegate *sciStoryVideoDl = nil;
-static SCIDownloadDelegate *sciStoryImageDl = nil;
-
-static void sciInitStoryDownloaders() {
-    NSString *method = [SCIUtils getStringPref:@"dw_save_action"];
-    DownloadAction action = [method isEqualToString:@"photos"] ? saveToPhotos : share;
-    DownloadAction imgAction = [method isEqualToString:@"photos"] ? saveToPhotos : quickLook;
-    sciStoryVideoDl = [[SCIDownloadDelegate alloc] initWithAction:action showProgress:YES];
-    sciStoryImageDl = [[SCIDownloadDelegate alloc] initWithAction:imgAction showProgress:NO];
-}
-
-static void sciDownloadMedia(IGMedia *media) {
-    sciInitStoryDownloaders();
-    NSURL *videoUrl = [SCIUtils getVideoUrlForMedia:media];
-    if (videoUrl) {
-        [sciStoryVideoDl downloadFileWithURL:videoUrl fileExtension:[[videoUrl lastPathComponent] pathExtension] hudLabel:nil];
-        return;
-    }
-    NSURL *photoUrl = [SCIUtils getPhotoUrlForMedia:media];
-    if (photoUrl) {
-        [sciStoryImageDl downloadFileWithURL:photoUrl fileExtension:[[photoUrl lastPathComponent] pathExtension] hudLabel:nil];
-        return;
-    }
-    [SCIUtils showErrorHUDWithDescription:@"Could not extract URL"];
-}
-
-static void sciDownloadWithConfirm(void(^block)(void)) {
-    if ([SCIUtils getBoolPref:@"dw_confirm"]) {
-        [SCIUtils showConfirmation:block title:@"Download?"];
-    } else {
-        block();
-    }
-}
-
-static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
+// ── Disappearing DM media ──
+static NSURL *sciDisappearingMediaURL(UIViewController *dmVC, BOOL *outIsVideo) {
     Ivar dsIvar = class_getInstanceVariable([dmVC class], "_dataSource");
     id ds = dsIvar ? object_getIvar(dmVC, dsIvar) : nil;
-    if (!ds) return;
-    Ivar msgIvar = class_getInstanceVariable([ds class], "_currentMessage");
+    Ivar msgIvar = ds ? class_getInstanceVariable([ds class], "_currentMessage") : nil;
     id msg = msgIvar ? object_getIvar(ds, msgIvar) : nil;
-    if (!msg) return;
-
-    id rawVideo = sciCall(msg, @selector(rawVideo));
-    if (rawVideo) {
-        NSURL *url = [SCIUtils getVideoUrl:rawVideo];
-        if (url) {
-            sciInitStoryDownloaders();
-            sciDownloadWithConfirm(^{ [sciStoryVideoDl downloadFileWithURL:url fileExtension:[[url lastPathComponent] pathExtension] hudLabel:nil]; });
-            return;
-        }
-    }
-
-    id rawPhoto = sciCall(msg, @selector(rawPhoto));
-    if (rawPhoto) {
-        NSURL *url = [SCIUtils getPhotoUrl:rawPhoto];
-        if (url) {
-            sciInitStoryDownloaders();
-            sciDownloadWithConfirm(^{ [sciStoryImageDl downloadFileWithURL:url fileExtension:[[url lastPathComponent] pathExtension] hudLabel:nil]; });
-            return;
-        }
-    }
-
-    id imgSpec = sciCall(msg, NSSelectorFromString(@"imageSpecifier"));
-    if (imgSpec) {
-        NSURL *url = sciCall(imgSpec, @selector(url));
-        if (url) {
-            sciInitStoryDownloaders();
-            sciDownloadWithConfirm(^{ [sciStoryImageDl downloadFileWithURL:url fileExtension:[[url lastPathComponent] pathExtension] hudLabel:nil]; });
-            return;
-        }
-    }
+    if (!msg) return nil;
 
     Ivar vmiIvar = class_getInstanceVariable([msg class], "_visualMediaInfo");
     id vmi = vmiIvar ? object_getIvar(msg, vmiIvar) : nil;
-    if (vmi) {
-        Ivar mediaIvar = class_getInstanceVariable([vmi class], "_media");
-        id mediaObj = mediaIvar ? object_getIvar(vmi, mediaIvar) : nil;
-        if (mediaObj) {
-            IGMedia *media = sciExtractMediaFromItem(mediaObj);
-            if (!media && [mediaObj isKindOfClass:NSClassFromString(@"IGMedia")]) media = (IGMedia *)mediaObj;
-            if (media) { sciDownloadWithConfirm(^{ sciDownloadMedia(media); }); return; }
-        }
-    }
+    Ivar mIvar = vmi ? class_getInstanceVariable([vmi class], "_media") : nil;
+    id visMedia = mIvar ? object_getIvar(vmi, mIvar) : nil;
+    if (!visMedia) return nil;
 
-    [SCIUtils showErrorHUDWithDescription:@"Could not find media"];
+    // Video
+    @try {
+        id rawVideo = [msg valueForKey:@"rawVideo"];
+        if (rawVideo) {
+            NSURL *url = [SCIUtils getVideoUrl:rawVideo];
+            if (url) { if (outIsVideo) *outIsVideo = YES; return url; }
+        }
+    } @catch (NSException *e) {}
+
+    // Photo
+    Ivar pi = class_getInstanceVariable([visMedia class], "_photo_photo");
+    id photo = pi ? object_getIvar(visMedia, pi) : nil;
+    if (photo) {
+        if (outIsVideo) *outIsVideo = NO;
+        return [SCIUtils getPhotoUrl:photo];
+    }
+    return nil;
+}
+
+static SCIDownloadDelegate *sciDMDownloadDelegate = nil;
+static void sciDownloadDisappearingMedia(UIViewController *dmVC) {
+    BOOL isVideo = NO;
+    NSURL *url = sciDisappearingMediaURL(dmVC, &isVideo);
+    if (!url) { [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Could not find media")]; return; }
+
+    sciDMDownloadDelegate = [[SCIDownloadDelegate alloc] initWithAction:saveToPhotos showProgress:YES];
+    [sciDMDownloadDelegate downloadFileWithURL:url fileExtension:(isVideo ? @"mp4" : @"jpg") hudLabel:nil];
+}
+
+static SCIDownloadDelegate *sciDMShareDelegate = nil;
+static void sciShareDisappearingMedia(UIViewController *dmVC) {
+    BOOL isVideo = NO;
+    NSURL *url = sciDisappearingMediaURL(dmVC, &isVideo);
+    if (!url) { [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Could not find media")]; return; }
+
+    sciDMShareDelegate = [[SCIDownloadDelegate alloc] initWithAction:share showProgress:YES];
+    [sciDMShareDelegate downloadFileWithURL:url fileExtension:(isVideo ? @"mp4" : @"jpg") hudLabel:nil];
+}
+
+static void sciExpandDisappearingMedia(UIViewController *dmVC) {
+    BOOL isVideo = NO;
+    NSURL *url = sciDisappearingMediaURL(dmVC, &isVideo);
+    if (!url) { [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Could not find media")]; return; }
+
+    if (isVideo) {
+        [SCIMediaViewer showWithVideoURL:url photoURL:nil caption:nil];
+    } else {
+        [SCIMediaViewer showWithVideoURL:nil photoURL:url caption:nil];
+    }
+}
+
+// ── Story playback control ──
+
+static void sciPauseStoryPlayback(UIView *sourceView) {
+    UIViewController *storyVC = sciFindVC(sourceView, @"IGStoryViewerViewController");
+    if (!storyVC) return;
+    id sc = sciFindSectionController(storyVC);
+
+    SEL pauseSel = NSSelectorFromString(@"pauseWithReason:");
+    if (sc && [sc respondsToSelector:pauseSel]) {
+        ((void(*)(id, SEL, NSInteger))objc_msgSend)(sc, pauseSel, 10);
+        return;
+    }
+    if ([storyVC respondsToSelector:pauseSel]) {
+        ((void(*)(id, SEL, NSInteger))objc_msgSend)(storyVC, pauseSel, 10);
+        return;
+    }
+}
+
+static void sciResumeStoryPlayback(UIView *sourceView) {
+    UIViewController *storyVC = sciFindVC(sourceView, @"IGStoryViewerViewController");
+    if (!storyVC) return;
+    id sc = sciFindSectionController(storyVC);
+
+    SEL resumeSel1 = NSSelectorFromString(@"tryResumePlaybackWithReason:");
+    SEL resumeSel2 = NSSelectorFromString(@"tryResumePlayback");
+    if (sc && [sc respondsToSelector:resumeSel1]) {
+        ((void(*)(id, SEL, NSInteger))objc_msgSend)(sc, resumeSel1, 0);
+        return;
+    }
+    if ([storyVC respondsToSelector:resumeSel2]) {
+        ((void(*)(id, SEL))objc_msgSend)(storyVC, resumeSel2);
+        return;
+    }
+    if ([storyVC respondsToSelector:resumeSel1]) {
+        ((void(*)(id, SEL, NSInteger))objc_msgSend)(storyVC, resumeSel1, 0);
+        return;
+    }
 }
 
 %hook IGStoryFullscreenOverlayView
@@ -114,18 +139,17 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
     %orig;
     if (!self.superview) return;
 
-    // Download button
-    if ([SCIUtils getBoolPref:@"dw_story"] && ![self viewWithTag:1340]) {
+    // Action button
+    if ([SCIUtils getBoolPref:@"stories_action_button"] && ![self viewWithTag:1340]) {
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
         btn.tag = 1340;
         UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightSemibold];
-        [btn setImage:[UIImage systemImageNamed:@"arrow.down" withConfiguration:cfg] forState:UIControlStateNormal];
+        [btn setImage:[UIImage systemImageNamed:@"ellipsis.circle" withConfiguration:cfg] forState:UIControlStateNormal];
         btn.tintColor = [UIColor whiteColor];
         btn.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.4];
         btn.layer.cornerRadius = 18;
         btn.clipsToBounds = YES;
         btn.translatesAutoresizingMaskIntoConstraints = NO;
-        [btn addTarget:self action:@selector(sciDownloadTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self addSubview:btn];
         [NSLayoutConstraint activateConstraints:@[
             [btn.bottomAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor constant:-100],
@@ -133,9 +157,108 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
             [btn.widthAnchor constraintEqualToConstant:36],
             [btn.heightAnchor constraintEqualToConstant:36]
         ]];
+
+        [SCIActionButton configureButton:btn
+                                 context:SCIActionContextStories
+                                 prefKey:@"stories_action_default"
+                           mediaProvider:^id (UIView *sourceView) {
+            // DM disappearing message — handle directly
+            UIViewController *dmVC = sciFindVC(sourceView, @"IGDirectVisualMessageViewerController");
+            if (dmVC) {
+                sciDownloadDisappearingMedia(dmVC);
+                return (id)kCFNull;
+            }
+
+            // Story path
+            sciPauseStoryPlayback(sourceView);
+            id item = sciGetCurrentStoryItem(sourceView);
+            if ([item isKindOfClass:NSClassFromString(@"IGMedia")]) return item;
+            return sciExtractMediaFromItem(item);
+        }];
+
+        // For DM visual messages: override menu with download/share/expand
+        btn.menu = [UIMenu menuWithChildren:@[
+            [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+                UIViewController *dmVC = sciFindVC(btn, @"IGDirectVisualMessageViewerController");
+                if (dmVC) {
+                    completion(@[
+                        [UIAction actionWithTitle:SCILocalized(@"Expand") image:[UIImage systemImageNamed:@"arrow.up.left.and.arrow.down.right"]
+                            identifier:nil handler:^(UIAction *a) { sciExpandDisappearingMedia(dmVC); }],
+                        [UIAction actionWithTitle:SCILocalized(@"Share") image:[UIImage systemImageNamed:@"square.and.arrow.up"]
+                            identifier:nil handler:^(UIAction *a) { sciShareDisappearingMedia(dmVC); }],
+                        [UIAction actionWithTitle:SCILocalized(@"Save to Photos") image:[UIImage systemImageNamed:@"square.and.arrow.down"]
+                            identifier:nil handler:^(UIAction *a) { sciDownloadDisappearingMedia(dmVC); }],
+                    ]);
+                } else {
+                    // Story — use normal action menu
+                    id media = nil;
+                    sciPauseStoryPlayback(btn);
+                    id item = sciGetCurrentStoryItem(btn);
+                    media = [item isKindOfClass:NSClassFromString(@"IGMedia")] ? item : sciExtractMediaFromItem(item);
+                    NSArray *actions = [SCIMediaActions actionsForContext:SCIActionContextStories media:media fromView:btn];
+                    UIMenu *built = [SCIActionMenu buildMenuWithActions:actions];
+                    completion(built.children);
+                }
+            }]
+        ]];
+        btn.showsMenuAsPrimaryAction = YES;
+
+        // KVO highlighted → resume playback when menu dismisses.
+        [btn addObserver:self forKeyPath:@"highlighted"
+                 options:NSKeyValueObservingOptionNew context:NULL];
+
+
+        // Story reel items provider for "download all" detection.
+        static const void *kStoryReelItemsProvider = &kStoryReelItemsProvider;
+        objc_setAssociatedObject(btn, kStoryReelItemsProvider, ^NSArray *(UIView *src) {
+            UIViewController *storyVC = sciFindVC(src, @"IGStoryViewerViewController");
+            if (!storyVC) return nil;
+            id vm = sciCall(storyVC, @selector(currentViewModel));
+            if (!vm) return nil;
+
+            // Try known selectors
+            for (NSString *sel in @[@"items", @"storyItems", @"reelItems", @"mediaItems", @"allItems"]) {
+                if ([vm respondsToSelector:NSSelectorFromString(sel)]) {
+                    @try {
+                        id val = ((id(*)(id,SEL))objc_msgSend)(vm, NSSelectorFromString(sel));
+                        if ([val isKindOfClass:[NSArray class]] && [(NSArray *)val count] > 1) {
+                            return val;
+                        }
+                    } @catch (__unused id e) {}
+                }
+            }
+
+            // Scan vm ivars for arrays of IGMedia
+            Class mc = NSClassFromString(@"IGMedia");
+            unsigned int cnt = 0;
+            Ivar *ivs = class_copyIvarList(object_getClass(vm), &cnt);
+            for (unsigned int i = 0; i < cnt; i++) {
+                const char *type = ivar_getTypeEncoding(ivs[i]);
+                if (!type || type[0] != '@') continue;
+                @try {
+                    id val = object_getIvar(vm, ivs[i]);
+                    if ([val isKindOfClass:[NSArray class]] && [(NSArray *)val count] > 1) {
+                        id first = [(NSArray *)val firstObject];
+                        if (mc && [first isKindOfClass:mc]) {
+                            free(ivs);
+                            return val;
+                        }
+                        // Items might be wrapped — try extracting media from first
+                        IGMedia *extracted = sciExtractMediaFromItem(first);
+                        if (extracted) {
+                            free(ivs);
+                            return val;
+                        }
+                    }
+                } @catch (__unused id e) {}
+            }
+            if (ivs) free(ivs);
+
+            return nil;
+        }, OBJC_ASSOCIATION_COPY_NONATOMIC);
     }
 
-    // Audio toggle button (left side, small)
+    // Audio toggle button
     sciInitStoryAudioState();
     if ([SCIUtils getBoolPref:@"story_audio_toggle"] && ![self viewWithTag:1341]) {
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -167,6 +290,17 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
 }
 
 // ============ Seen button lifecycle ============
+
+// KVO: action button highlighted → NO means UIMenu dismissed → resume.
+%new - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
+                              change:(NSDictionary *)change context:(void *)context {
+    if ([keyPath isEqualToString:@"highlighted"]) {
+        BOOL highlighted = [change[NSKeyValueChangeNewKey] boolValue];
+        if (!highlighted) {
+            sciResumeStoryPlayback(self);
+        }
+    }
+}
 
 // Refresh the audio toggle icon (tag 1341) to match current state.
 %new - (void)sciRefreshAudioButton {
@@ -304,33 +438,6 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
     [sender setImage:[UIImage systemImageNamed:icon withConfiguration:cfg] forState:UIControlStateNormal];
 }
 
-// ============ Download handler ============
-
-%new - (void)sciDownloadTapped:(UIButton *)sender {
-    UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
-    [haptic impactOccurred];
-    [UIView animateWithDuration:0.1 animations:^{ sender.transform = CGAffineTransformMakeScale(0.8, 0.8); }
-                     completion:^(BOOL f) { [UIView animateWithDuration:0.1 animations:^{ sender.transform = CGAffineTransformIdentity; }]; }];
-    @try {
-        id item = sciGetCurrentStoryItem(self);
-        IGMedia *media = sciExtractMediaFromItem(item);
-        if (media) {
-            sciDownloadWithConfirm(^{ sciDownloadMedia(media); });
-            return;
-        }
-
-        UIViewController *dmVC = sciFindVC(self, @"IGDirectVisualMessageViewerController");
-        if (dmVC) {
-            sciDownloadDMVisualMessage(dmVC);
-            return;
-        }
-
-        [SCIUtils showErrorHUDWithDescription:@"Could not find media"];
-    } @catch (NSException *e) {
-        [SCIUtils showErrorHUDWithDescription:[NSString stringWithFormat:@"Error: %@", e.reason]];
-    }
-}
-
 // ============ Seen button tap ============
 
 %new - (void)sciSeenButtonTapped:(UIButton *)sender {
@@ -343,19 +450,19 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
     if (bs && !inList && ownerPK) {
         UIViewController *host = [SCIUtils nearestViewControllerForView:self];
         UIAlertController *alert = [UIAlertController
-            alertControllerWithTitle:@"Add to block list?"
-                             message:[NSString stringWithFormat:@"Story seen receipts will be blocked for @%@.", ownerInfo[@"username"] ?: @""]
+            alertControllerWithTitle:SCILocalized(@"Add to block list?")
+                             message:[NSString stringWithFormat:SCILocalized(@"Story seen receipts will be blocked for @%@."), ownerInfo[@"username"] ?: @""]
                       preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:[UIAlertAction actionWithTitle:@"Add" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
+        [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Add") style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
             [SCIExcludedStoryUsers addOrUpdateEntry:@{
                 @"pk": ownerPK,
                 @"username": ownerInfo[@"username"] ?: @"",
                 @"fullName": ownerInfo[@"fullName"] ?: @""
             }];
-            [SCIUtils showToastForDuration:2.0 title:@"Added to block list"];
+            [SCIUtils showToastForDuration:2.0 title:SCILocalized(@"Added to block list")];
             sciRefreshAllVisibleOverlays(sciActiveStoryViewerVC);
         }]];
-        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+        [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
         [host presentViewController:alert animated:YES completion:nil];
         return;
     }
@@ -369,18 +476,18 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
     // Block all + in list: tap to remove from exclude list
     if (inList) {
         UIViewController *host = [SCIUtils nearestViewControllerForView:self];
-        NSString *alertTitle = bs ? @"Remove from block list?" : @"Un-exclude story seen?";
+        NSString *alertTitle = bs ? SCILocalized(@"Remove from block list?") : SCILocalized(@"Un-exclude story seen?");
         NSString *alertMsg = bs ? [NSString stringWithFormat:@"@%@ will no longer have seen receipts blocked.", ownerInfo[@"username"] ?: @""]
                                 : [NSString stringWithFormat:@"@%@ will resume normal story-seen blocking.", ownerInfo[@"username"] ?: @""];
         UIAlertController *alert = [UIAlertController
             alertControllerWithTitle:alertTitle message:alertMsg preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:[UIAlertAction actionWithTitle:bs ? @"Unblock" : @"Un-exclude" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *_) {
+        [alert addAction:[UIAlertAction actionWithTitle:bs ? SCILocalized(@"Unblock") : SCILocalized(@"Un-exclude") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *_) {
             [SCIExcludedStoryUsers removePK:ownerPK];
-            [SCIUtils showToastForDuration:2.0 title:bs ? @"Unblocked" : @"Un-excluded"];
+            [SCIUtils showToastForDuration:2.0 title:bs ? SCILocalized(@"Unblocked") : SCILocalized(@"Un-excluded")];
             if (bs) sciTriggerStoryMarkSeen(sciActiveStoryViewerVC);
             sciRefreshAllVisibleOverlays(sciActiveStoryViewerVC);
         }]];
-        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+        [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
         [host presentViewController:alert animated:YES completion:nil];
         return;
     }
@@ -391,7 +498,7 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
         UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightSemibold];
         [sender setImage:[UIImage systemImageNamed:(sciStorySeenToggleEnabled ? @"eye.fill" : @"eye") withConfiguration:cfg] forState:UIControlStateNormal];
         sender.tintColor = sciStorySeenToggleEnabled ? SCIUtils.SCIColor_Primary : [UIColor whiteColor];
-        [SCIUtils showToastForDuration:2.0 title:sciStorySeenToggleEnabled ? @"Story read receipts enabled" : @"Story read receipts disabled"];
+        [SCIUtils showToastForDuration:2.0 title:sciStorySeenToggleEnabled ? SCILocalized(@"Story read receipts enabled") : SCILocalized(@"Story read receipts disabled")];
         return;
     }
 
@@ -406,6 +513,9 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
     UIView *btn = gr.view;
     UIViewController *host = [SCIUtils nearestViewControllerForView:self];
     if (!host) return;
+
+    // Pause story while the sheet is open
+    sciPauseStoryPlayback(self);
     UIWindow *capturedWin = btn.window ?: self.window;
     if (!capturedWin) {
         for (UIWindow *w in [UIApplication sharedApplication].windows) { if (w.isKeyWindow) { capturedWin = w; break; } }
@@ -417,31 +527,35 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
     BOOL inList = pk && [SCIExcludedStoryUsers isInList:pk];
     BOOL blockSelected = [SCIExcludedStoryUsers isBlockSelectedMode];
 
+    __weak UIView *weakSelf = self;
+    void (^resume)(void) = ^{ if (weakSelf) sciResumeStoryPlayback(weakSelf); };
+
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Mark seen" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
+    [sheet addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Mark seen") style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
         ((void(*)(id, SEL, id))objc_msgSend)(self, @selector(sciMarkSeenTapped:), btn);
+        resume();
     }]];
     if (pk) {
-        NSString *addLabel = blockSelected ? @"Add to block list" : @"Exclude story seen";
-        NSString *removeLabel = blockSelected ? @"Remove from block list" : @"Un-exclude story seen";
+        NSString *addLabel = blockSelected ? SCILocalized(@"Add to block list") : SCILocalized(@"Exclude story seen");
+        NSString *removeLabel = blockSelected ? SCILocalized(@"Remove from block list") : SCILocalized(@"Un-exclude story seen");
         NSString *t = inList ? removeLabel : addLabel;
         [sheet addAction:[UIAlertAction actionWithTitle:t style:inList ? UIAlertActionStyleDestructive : UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
             if (inList) {
                 [SCIExcludedStoryUsers removePK:pk];
-                [SCIUtils showToastForDuration:2.0 title:blockSelected ? @"Unblocked" : @"Un-excluded"];
+                [SCIUtils showToastForDuration:2.0 title:blockSelected ? SCILocalized(@"Unblocked") : SCILocalized(@"Un-excluded")];
                 if (blockSelected) sciTriggerStoryMarkSeen(sciActiveStoryViewerVC);
             } else {
                 [SCIExcludedStoryUsers addOrUpdateEntry:@{ @"pk": pk, @"username": username, @"fullName": fullName }];
-                [SCIUtils showToastForDuration:2.0 title:blockSelected ? @"Blocked" : @"Excluded"];
+                [SCIUtils showToastForDuration:2.0 title:blockSelected ? SCILocalized(@"Blocked") : SCILocalized(@"Excluded")];
                 if (!blockSelected) sciTriggerStoryMarkSeen(sciActiveStoryViewerVC);
             }
             sciRefreshAllVisibleOverlays(sciActiveStoryViewerVC);
+            resume();
         }]];
     }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Stories settings" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_) {
-        [SCIUtils showSettingsVC:capturedWin atTopLevelEntry:@"Stories"];
+    [sheet addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:^(UIAlertAction *_) {
+        resume();
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.sourceView = btn;
     sheet.popoverPresentationController.sourceRect = btn.bounds;
     [host presentViewController:sheet animated:YES completion:nil];
@@ -466,7 +580,7 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
             if (!storyItem) storyItem = sciGetCurrentStoryItem(self);
             IGMedia *media = (storyItem && [storyItem isKindOfClass:NSClassFromString(@"IGMedia")]) ? storyItem : sciExtractMediaFromItem(storyItem);
 
-            if (!media) { [SCIUtils showErrorHUDWithDescription:@"Could not find story media"]; return; }
+            if (!media) { [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Could not find story media")]; return; }
 
             sciAllowSeenForPK(media);
             sciSeenBypassActive = YES;
@@ -496,7 +610,7 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
                 }
             }
             sciSeenBypassActive = NO;
-            [SCIUtils showToastForDuration:2.0 title:@"Marked as seen" subtitle:@"Will sync when leaving stories"];
+            [SCIUtils showToastForDuration:2.0 title:SCILocalized(@"Marked as seen") subtitle:SCILocalized(@"Will sync when leaving stories")];
 
             // Advance to next story if enabled (skip when triggered programmatically via exclude)
             if (sender && [SCIUtils getBoolPref:@"advance_on_mark_seen"] && sectionCtrl) {
@@ -561,13 +675,13 @@ static void sciDownloadDMVisualMessage(UIViewController *dmVC) {
                 dmVisualMsgsViewedButtonEnabled = wasEnabled;
             });
 
-            [SCIUtils showToastForDuration:1.5 title:@"Marked as viewed"];
+            [SCIUtils showToastForDuration:1.5 title:SCILocalized(@"Marked as viewed")];
             return;
         }
 
-        [SCIUtils showErrorHUDWithDescription:@"VC not found"];
+        [SCIUtils showErrorHUDWithDescription:SCILocalized(@"VC not found")];
     } @catch (NSException *e) {
-        [SCIUtils showErrorHUDWithDescription:[NSString stringWithFormat:@"Error: %@", e.reason]];
+        [SCIUtils showErrorHUDWithDescription:[NSString stringWithFormat:SCILocalized(@"Error: %@"), e.reason]];
     }
 }
 

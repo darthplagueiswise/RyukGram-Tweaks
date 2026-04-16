@@ -1,4 +1,4 @@
-name: Build RyukGram tweak for Rootless
+name: Build RyukGram tweak (rootless + rootful)
 
 on:
     push:
@@ -12,7 +12,7 @@ concurrency:
     cancel-in-progress: true
 jobs:
     build:
-        name: Build RyukGram Rootless
+        name: Build RyukGram
         runs-on: macos-latest
         permissions:
             contents: write
@@ -65,28 +65,41 @@ jobs:
                 echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
                 echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-            - name: Build RyukGram tweak for Rootless
+            - name: Setup FFmpegKit
+              run: cd main && ./scripts/setup-ffmpegkit.sh
+
+            - name: Build rootless
               run: |
                 cd main
-                ls -la
                 ./build.sh rootless
-                ls -la packages
+                cd packages
+                DEB="$(ls -t *-rootless.deb | head -n1)"
+                [ -n "$DEB" ] && mv "$DEB" "com.faroukbmiled.ryukgram_${VERSION}+debug-rootless.deb"
+                ls -la
               env:
                 THEOS: ${{ github.workspace }}/theos
 
-            - name: Rename deb to include version info
+            - name: Build rootful
               run: |
-                cd main/packages
-                mv "$(ls -t | head -n1)" "com.faroukbmiled.ryukgram_${VERSION}+debug-rootless.deb"
+                cd main
+                ./build.sh rootful
+                cd packages
+                DEB="$(ls -t *-rootful.deb | head -n1)"
+                [ -n "$DEB" ] && mv "$DEB" "com.faroukbmiled.ryukgram_${VERSION}+debug-rootful.deb"
+                ls -la
+              env:
+                THEOS: ${{ github.workspace }}/theos
 
-            - name: Pass package name to upload action
-              id: package_name
-              run: |
-                echo "package=$(ls -t main/packages | head -n1)" >> "$GITHUB_OUTPUT"
-
-            - name: Upload Artifact
+            - name: Upload rootless artifact
               uses: actions/upload-artifact@v4
               with:
-                name: ${{ steps.package_name.outputs.package }}
-                path: ${{ github.workspace }}/main/packages/${{ steps.package_name.outputs.package }}
+                name: com.faroukbmiled.ryukgram_${{ env.VERSION }}+debug-rootless.deb
+                path: ${{ github.workspace }}/main/packages/com.faroukbmiled.ryukgram_${{ env.VERSION }}+debug-rootless.deb
+                if-no-files-found: error
+
+            - name: Upload rootful artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: com.faroukbmiled.ryukgram_${{ env.VERSION }}+debug-rootful.deb
+                path: ${{ github.workspace }}/main/packages/com.faroukbmiled.ryukgram_${{ env.VERSION }}+debug-rootful.deb
                 if-no-files-found: error

@@ -20,6 +20,13 @@
     return [[NSUserDefaults standardUserDefaults] stringForKey:key];
 }
 
+static NSDictionary *sciRegisteredDefaultsRef = nil;
+
++ (NSDictionary<NSString *, id> *)sciRegisteredDefaults { return sciRegisteredDefaultsRef ?: @{}; }
++ (void)setSciRegisteredDefaults:(NSDictionary<NSString *, id> *)defaults {
+    sciRegisteredDefaultsRef = [defaults copy];
+}
+
 + (_Bool)liquidGlassEnabledBool:(_Bool)fallback {
     BOOL setting = [SCIUtils getBoolPref:@"liquid_glass_surfaces"];
     return setting ? true : fallback;
@@ -271,22 +278,22 @@
 
 // Alerts
 + (BOOL)showConfirmation:(void(^)(void))okHandler title:(NSString *)title {
-    UIAlertController* alert = [UIAlertController alertControllerWithTitle:title message:@"Are you sure?" preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Yes" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+    UIAlertController* alert = [UIAlertController alertControllerWithTitle:title message:SCILocalized(@"Are you sure?") preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Yes") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
         okHandler();
     }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"No!" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"No!") style:UIAlertActionStyleCancel handler:nil]];
 
     [topMostController() presentViewController:alert animated:YES completion:nil];
 
     return nil;
 };
 + (BOOL)showConfirmation:(void(^)(void))okHandler cancelHandler:(void(^)(void))cancelHandler title:(NSString *)title {
-    UIAlertController* alert = [UIAlertController alertControllerWithTitle:title message:@"Are you sure?" preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Yes" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+    UIAlertController* alert = [UIAlertController alertControllerWithTitle:title message:SCILocalized(@"Are you sure?") preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Yes") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
         okHandler();
     }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"No!" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"No!") style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
         if (cancelHandler != nil) {
             cancelHandler();
         }
@@ -303,11 +310,11 @@
     return [self showConfirmation:okHandler cancelHandler:cancelHandler title:nil];
 }
 + (void)showRestartConfirmation {
-    UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"Restart required" message:@"You must restart the app to apply this change" preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Restart" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+    UIAlertController* alert = [UIAlertController alertControllerWithTitle:SCILocalized(@"Restart required") message:SCILocalized(@"You must restart the app to apply this change") preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Restart") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
         exit(0);
     }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Later" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Later") style:UIAlertActionStyleCancel handler:nil]];
 
     [topMostController() presentViewController:alert animated:YES completion:nil];
 };

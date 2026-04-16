@@ -5,6 +5,7 @@
 
 #import "../../Utils.h"
 #import "../../InstagramHeaders.h"
+#import "../../SCIFFmpeg.h"
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import <AVFoundation/AVFoundation.h>
@@ -77,26 +78,26 @@ static void sciSendAudioFile(NSURL *audioURL, UIViewController *threadVC) {
         if ([threadVC respondsToSelector:vmSel]) {
             typedef void (*Fn)(id, SEL, id, id, double, NSInteger, id);
             ((Fn)objc_msgSend)(threadVC, vmSel, audioURL, waveform, duration, (NSInteger)2, nil);
-            [SCIUtils showToastForDuration:1.5 title:@"Audio sent"];
+            [SCIUtils showToastForDuration:1.5 title:SCILocalized(@"Audio sent")];
             return;
         }
         SEL s7 = @selector(voiceRecordViewController:didRecordAudioClipWithURL:waveform:duration:entryPoint:aiVoiceEffectApplied:sendButtonTypeTapped:);
         if ([threadVC respondsToSelector:s7]) {
             typedef void (*Fn)(id, SEL, id, id, id, CGFloat, NSInteger, id, id);
             ((Fn)objc_msgSend)(threadVC, s7, voiceRecordVC, audioURL, waveform, (CGFloat)duration, (NSInteger)2, nil, nil);
-            [SCIUtils showToastForDuration:1.5 title:@"Audio sent"];
+            [SCIUtils showToastForDuration:1.5 title:SCILocalized(@"Audio sent")];
             return;
         }
         SEL s5 = @selector(voiceRecordViewController:didRecordAudioClipWithURL:waveform:duration:entryPoint:);
         if ([threadVC respondsToSelector:s5]) {
             typedef void (*Fn)(id, SEL, id, id, id, CGFloat, NSInteger);
             ((Fn)objc_msgSend)(threadVC, s5, voiceRecordVC, audioURL, waveform, (CGFloat)duration, (NSInteger)2);
-            [SCIUtils showToastForDuration:1.5 title:@"Audio sent"];
+            [SCIUtils showToastForDuration:1.5 title:SCILocalized(@"Audio sent")];
             return;
         }
-        [SCIUtils showErrorHUDWithDescription:@"No voice send method found"];
+        [SCIUtils showErrorHUDWithDescription:SCILocalized(@"No voice send method found")];
     } @catch (NSException *e) {
-        [SCIUtils showErrorHUDWithDescription:[NSString stringWithFormat:@"Send failed: %@", e.reason]];
+        [SCIUtils showErrorHUDWithDescription:[NSString stringWithFormat:SCILocalized(@"Send failed: %@"), e.reason]];
     }
 }
 
@@ -121,10 +122,10 @@ static void sciShowUnsupportedAlert(NSURL *url, NSString *reason, UIViewControll
                                                                    message:msg
                                                             preferredStyle:UIAlertControllerStyleAlert];
     __weak UIViewController *weakVC = threadVC;
-    [alert addAction:[UIAlertAction actionWithTitle:@"Send anyway" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Send anyway") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         sciSendAudioFile(url, weakVC);
     }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Open GitHub" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Open GitHub") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         [[UIApplication sharedApplication]
             openURL:[NSURL URLWithString:@"https://github.com/faroukbmiled/RyukGram/issues"]
             options:@{} completionHandler:nil];
@@ -135,19 +136,38 @@ static void sciShowUnsupportedAlert(NSURL *url, NSString *reason, UIViewControll
     [presenter presentViewController:alert animated:YES completion:nil];
 }
 
-static void sciExportAndSend(NSURL *url, UIViewController *threadVC, BOOL isVideo, CMTimeRange trimRange) {
+// FFmpeg path: any format → AAC M4A, with optional trim
+static void sciFFmpegConvertAndSend(NSURL *url, UIViewController *threadVC, CMTimeRange trimRange) {
     BOOL hasTrim = CMTIMERANGE_IS_VALID(trimRange) && !CMTIMERANGE_IS_EMPTY(trimRange) &&
                    CMTimeGetSeconds(trimRange.duration) > 0;
 
-    // Allowlisted formats skip AVFoundation entirely; trim is ignored since
-    // AVFoundation can't read their timelines anyway.
-    NSString *ext = [[url pathExtension] lowercaseString];
-    if (!isVideo && [sciPassthroughAudioExts() containsObject:ext]) {
-        sciSendAudioFile(url, threadVC);
-        return;
-    }
+    NSString *out = [NSTemporaryDirectory() stringByAppendingPathComponent:
+                     [NSString stringWithFormat:@"rg_ffaudio_%u.m4a", arc4random()]];
+    [[NSFileManager defaultManager] removeItemAtPath:out error:nil];
 
-    [SCIUtils showToastForDuration:1.5 title:isVideo ? @"Extracting audio..." : @"Converting..."];
+    NSMutableString *cmd = [NSMutableString stringWithFormat:@"-y -i \"%@\"", url.path];
+    if (hasTrim) {
+        double ss = CMTimeGetSeconds(trimRange.start);
+        double dur = CMTimeGetSeconds(trimRange.duration);
+        [cmd appendFormat:@" -ss %.3f -t %.3f", ss, dur];
+    }
+    [cmd appendFormat:@" -vn -c:a aac -b:a 128k -ar 44100 -ac 1 \"%@\"", out];
+
+    [SCIFFmpeg executeCommand:cmd completion:^(BOOL success, NSString *output) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (success && [[NSFileManager defaultManager] fileExistsAtPath:out]) {
+                sciSendAudioFile([NSURL fileURLWithPath:out], threadVC);
+            } else {
+                sciShowUnsupportedAlert(url, @"FFmpeg conversion failed", threadVC);
+            }
+        });
+    }];
+}
+
+// AVFoundation fallback for iOS-native formats
+static void sciAVFoundationConvertAndSend(NSURL *url, UIViewController *threadVC, CMTimeRange trimRange) {
+    BOOL hasTrim = CMTIMERANGE_IS_VALID(trimRange) && !CMTIMERANGE_IS_EMPTY(trimRange) &&
+                   CMTimeGetSeconds(trimRange.duration) > 0;
 
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
         AVAsset *asset = [AVAsset assetWithURL:url];
@@ -192,9 +212,36 @@ static void sciExportAndSend(NSURL *url, UIViewController *threadVC, BOOL isVide
     });
 }
 
-// Extensions IG accepts as voice messages without conversion. Append after testing.
-//   m4a/aac    — native iOS recording format
-//   ogg/opus   — what web/desktop IG sends
+static void sciExportAndSend(NSURL *url, UIViewController *threadVC, BOOL isVideo, CMTimeRange trimRange) {
+    BOOL hasTrim = CMTIMERANGE_IS_VALID(trimRange) && !CMTIMERANGE_IS_EMPTY(trimRange) &&
+                   CMTimeGetSeconds(trimRange.duration) > 0;
+
+    // Passthrough formats IG accepts directly (no conversion needed, trim ignored)
+    NSString *ext = [[url pathExtension] lowercaseString];
+    if (!isVideo && !hasTrim && [sciPassthroughAudioExts() containsObject:ext]) {
+        sciSendAudioFile(url, threadVC);
+        return;
+    }
+
+    [SCIUtils showToastForDuration:1.5 title:isVideo ? SCILocalized(@"Extracting audio...") : SCILocalized(@"Converting...")];
+
+    // FFmpeg handles any format + video→audio extraction
+    if ([SCIFFmpeg isAvailable]) {
+        sciFFmpegConvertAndSend(url, threadVC, trimRange);
+        return;
+    }
+
+    // Passthrough without trim when no FFmpeg
+    if (!isVideo && [sciPassthroughAudioExts() containsObject:ext]) {
+        sciSendAudioFile(url, threadVC);
+        return;
+    }
+
+    // AVFoundation fallback
+    sciAVFoundationConvertAndSend(url, threadVC, trimRange);
+}
+
+// Formats IG accepts as-is (no conversion needed)
 static NSSet<NSString *> *sciPassthroughAudioExts(void) {
     static NSSet *set;
     static dispatch_once_t once;
@@ -261,7 +308,7 @@ static const CGFloat kTrackMargin = 24.0;
     sendBtn.frame = CGRectMake(kTrackMargin, bottomY - 56, w - kTrackMargin * 2, 50);
     sendBtn.backgroundColor = [UIColor systemBlueColor];
     sendBtn.layer.cornerRadius = 14;
-    [sendBtn setTitle:@"Send Audio" forState:UIControlStateNormal];
+    [sendBtn setTitle:SCILocalized(@"Send Audio") forState:UIControlStateNormal];
     [sendBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     sendBtn.titleLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];
     [sendBtn addTarget:self action:@selector(sendTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -364,7 +411,7 @@ static const CGFloat kTrackMargin = 24.0;
     self.durationLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.3];
     self.durationLabel.font = [UIFont systemFontOfSize:12];
     self.durationLabel.textAlignment = NSTextAlignmentCenter;
-    self.durationLabel.text = [NSString stringWithFormat:@"Total: %@", [self formatTime:self.totalDuration]];
+    self.durationLabel.text = [NSString stringWithFormat:SCILocalized(@"Total: %@"), [self formatTime:self.totalDuration]];
     [self.view addSubview:self.durationLabel];
 
     // ── cancel X button (top-left) ──
@@ -532,7 +579,7 @@ static const CGFloat kTrackMargin = 24.0;
     [self stopPlayback];
     double dur = self.endTime - self.startTime;
     if (dur < 0.5) {
-        [SCIUtils showErrorHUDWithDescription:@"Selection too short (min 0.5s)"];
+        [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Selection too short (min 0.5s)")];
         return;
     }
 
@@ -564,28 +611,30 @@ static void sciShowTrimVC(NSURL *url, BOOL isVideo, UIViewController *threadVC) 
 static void sciShowUploadAudioOptions(UIViewController *threadVC) {
     sciAudioThreadVC = threadVC;
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Upload Audio"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:SCILocalized(@"Upload Audio")
                                                                   message:nil
                                                            preferredStyle:UIAlertControllerStyleActionSheet];
 
     __weak UIViewController *weakVC = threadVC;
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Audio/Video from Files" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Audio/Video from Files") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         UIViewController *vc = weakVC;
         if (!vc) return;
         #pragma clang diagnostic push
         #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        NSArray *types = [SCIFFmpeg isAvailable]
+            ? @[@"public.audio", @"public.audiovisual-content"]
+            : @[@"public.audio", @"public.mpeg-4-audio", @"public.mp3", @"com.microsoft.waveform-audio",
+                @"public.aiff-audio", @"com.apple.m4a-audio",
+                @"public.movie", @"public.mpeg-4", @"com.apple.quicktime-movie"];
         UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc]
-            initWithDocumentTypes:@[@"public.audio", @"public.mpeg-4-audio", @"public.mp3", @"com.microsoft.waveform-audio",
-                                    @"public.aiff-audio", @"com.apple.m4a-audio",
-                                    @"public.movie", @"public.mpeg-4", @"com.apple.quicktime-movie"]
-                          inMode:UIDocumentPickerModeImport];
+            initWithDocumentTypes:types inMode:UIDocumentPickerModeImport];
         #pragma clang diagnostic pop
         picker.delegate = (id<UIDocumentPickerDelegate>)vc;
         [vc presentViewController:picker animated:YES completion:nil];
     }]];
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Video from Library" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Video from Library") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         UIViewController *vc = weakVC;
         if (!vc) return;
         UIImagePickerController *imgPicker = [[UIImagePickerController alloc] init];
@@ -597,7 +646,7 @@ static void sciShowUploadAudioOptions(UIViewController *threadVC) {
         [vc presentViewController:imgPicker animated:YES completion:nil];
     }]];
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     [threadVC presentViewController:alert animated:YES completion:nil];
 }
 
@@ -654,23 +703,52 @@ static void sciShowUploadAudioOptions(UIViewController *threadVC) {
     sciDMMenuPending = YES;
 }
 
-// file picker delegate — show trim UI
+// Convert unsupported formats to M4A before showing trim UI
+static void sciPrepareAndShowTrim(NSURL *url, UIViewController *threadVC) {
+    AVAsset *asset = [AVAsset assetWithURL:url];
+    double dur = CMTimeGetSeconds(asset.duration);
+    BOOL avCanRead = dur > 0 && !isnan(dur);
+    BOOL isVideo = [[asset tracksWithMediaType:AVMediaTypeVideo] count] > 0;
+
+    if (avCanRead) {
+        sciShowTrimVC(url, isVideo, threadVC);
+        return;
+    }
+
+    // AVFoundation can't read it — pre-convert with FFmpeg
+    if ([SCIFFmpeg isAvailable]) {
+        [SCIUtils showToastForDuration:1.5 title:SCILocalized(@"Converting...")];
+        NSString *out = [NSTemporaryDirectory() stringByAppendingPathComponent:
+                         [NSString stringWithFormat:@"rg_pre_%u.m4a", arc4random()]];
+        [[NSFileManager defaultManager] removeItemAtPath:out error:nil];
+
+        NSString *cmd = [NSString stringWithFormat:@"-y -i \"%@\" -vn -c:a aac -b:a 128k -ar 44100 \"%@\"", url.path, out];
+        [SCIFFmpeg executeCommand:cmd completion:^(BOOL success, NSString *output) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (success && [[NSFileManager defaultManager] fileExistsAtPath:out]) {
+                    sciShowTrimVC([NSURL fileURLWithPath:out], NO, threadVC);
+                } else {
+                    sciShowUnsupportedAlert(url, @"FFmpeg conversion failed", threadVC);
+                }
+            });
+        }];
+        return;
+    }
+
+    // No FFmpeg, can't read — unsupported
+    sciShowUnsupportedAlert(url, @"Format not supported without FFmpegKit", threadVC);
+}
+
+// File picker delegate
 %new - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     NSURL *url = urls.firstObject;
     if (!url) return;
-
-    // detect if it's a video file
-    AVAsset *asset = [AVAsset assetWithURL:url];
-    BOOL isVideo = [[asset tracksWithMediaType:AVMediaTypeVideo] count] > 0;
-
-    sciShowTrimVC(url, isVideo, self);
+    sciPrepareAndShowTrim(url, self);
 }
 
 %new - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentAtURL:(NSURL *)url {
     if (!url) return;
-    AVAsset *asset = [AVAsset assetWithURL:url];
-    BOOL isVideo = [[asset tracksWithMediaType:AVMediaTypeVideo] count] > 0;
-    sciShowTrimVC(url, isVideo, self);
+    sciPrepareAndShowTrim(url, self);
 }
 
 %new - (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {}
@@ -680,7 +758,7 @@ static void sciShowUploadAudioOptions(UIViewController *threadVC) {
     [picker dismissViewControllerAnimated:YES completion:nil];
     NSURL *videoURL = info[UIImagePickerControllerMediaURL];
     if (!videoURL) {
-        [SCIUtils showErrorHUDWithDescription:@"Could not get video URL"];
+        [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Could not get video URL")];
         return;
     }
     // UIImagePickerController with allowsEditing already trimmed the video for us

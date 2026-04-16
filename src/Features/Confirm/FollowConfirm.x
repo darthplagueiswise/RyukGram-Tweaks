@@ -18,15 +18,20 @@
 // Follow button on profile page
 %hook IGFollowController
 - (void)_didPressFollowButton {
-    // Get user follow status (check if already following user)
-    NSInteger UserFollowStatus = self.user.followStatus;
-
-    // Only show confirm dialog if user is not following
-    if (UserFollowStatus == 2) {
+    NSInteger status = self.user.followStatus;
+    if (status == 2) {
         CONFIRMFOLLOW(%orig);
-    }
-    else {
+    } else {
         return %orig;
+    }
+}
+
+// Unfollow from profile action sheet
+- (void)_performUnfollow {
+    if ([SCIUtils getBoolPref:@"unfollow_confirm"]) {
+        [SCIUtils showConfirmation:^(void) { %orig; } title:SCILocalized(@"Unfollow?")];
+    } else {
+        %orig;
     }
 }
 %end

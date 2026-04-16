@@ -293,6 +293,9 @@
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gr; // new
 @end
 
+@interface IGHomeFeedHeaderView : UIView
+@end
+
 @interface IGHomeFeedHeaderViewController
 - (void)headerDidLongPressLogo:(id)arg1;
 @end
@@ -434,6 +437,9 @@
 @interface IGUFIInteractionCountsView : UIView
 @end
 
+@interface IGUFIButtonBarView : UIView
+@end
+
 @interface IGFeedItemUFICell : UIView
 - (void)UFIButtonBarDidTapOnRepost:(id)arg1;
 @end
@@ -482,6 +488,9 @@
 @property (readonly, nonatomic) long long destination;
 @end
 
+@interface IGCommentThreadConfiguration : NSObject
+@end
+
 @interface IGDSMenuItem : NSObject
 @end
 
@@ -519,6 +528,31 @@
 @interface IGCreationActionBarLabeledButton : NSObject
 @property (readonly, nonatomic) IGCreationActionBarButton *button;
 @end
+
+// Call buttons in DM thread header. Coordinator owns _audioCallButton / _videoCallButton
+// (both IGDirectCallButton) and forwards taps to _didTapAudioButton: / _didTapVideoButton:.
+// Discovered by dumping the thread VC view hierarchy for IGDirectCallButton.
+@interface IGDirectThreadCallButtonsCoordinator : NSObject @end
+@interface IGDirectCallButton : UIView @end
+
+// IG's UINavigationBar subclass — hosts the iOS 26 liquid-glass platter layout.
+@interface IGNavigationBar : UINavigationBar @end
+
+// Story tray list adapter — drives data source updates for the home feed tray.
+@interface IGListAdapter : NSObject
+- (void)performUpdatesAnimated:(BOOL)animated completion:(void (^)(BOOL))completion;
+@end
+
+// Reels/feed video cell — used for long-press zoom gesture attachment.
+@interface IGFeedItemPageVideoCell : UICollectionViewCell @end
+
+// Profile page view controller — `user` is the IGUser being displayed.
+@interface IGProfileViewController : UIViewController
+@property (nonatomic, strong) id user;
+@end
+
+// Notes thought-bubble view on profiles — the note's touch target.
+@interface IGDirectNotesThoughtBubbleView : UIView @end
 
 
 

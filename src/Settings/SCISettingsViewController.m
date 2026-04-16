@@ -1,8 +1,9 @@
 #import "SCISettingsViewController.h"
+#import "SCISearchBarStyler.h"
 
 static char rowStaticRef[] = "row";
 
-@interface SCISettingsViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating>
+@interface SCISettingsViewController () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating, UISearchControllerDelegate>
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, copy) NSArray *sections;
@@ -73,16 +74,88 @@ static char rowStaticRef[] = "row";
     if (self.isRoot) {
         UISearchController *sc = [[UISearchController alloc] initWithSearchResultsController:nil];
         sc.searchResultsUpdater = self;
+        sc.delegate = self;
         sc.obscuresBackgroundDuringPresentation = NO;
-        sc.searchBar.placeholder = @"Search settings";
+        sc.searchBar.placeholder = SCILocalized(@"settings.search.placeholder");
         self.navigationItem.searchController = sc;
         self.navigationItem.hidesSearchBarWhenScrolling = NO;
+        if (![SCIUtils getBoolPref:@"liquid_glass_buttons"]) {
+            self.definesPresentationContext = YES;
+        }
         self.searchController = sc;
 
         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc]
             initWithBarButtonSystemItem:UIBarButtonSystemItemClose
                                  target:self action:@selector(sciDismissSettings)];
+
+        // Compact globe button — English is the only shipped language for now,
+        // so the tap shows an info alert instead of a picker. Re-enable the
+        // menu below once additional translations land.
+        UIImage *globe = [UIImage systemImageNamed:@"globe"];
+        UIBarButtonItem *langItem = [[UIBarButtonItem alloc] initWithImage:globe
+                                                                     style:UIBarButtonItemStylePlain
+                                                                    target:self
+                                                                    action:@selector(sciShowLanguageInfo)];
+        self.navigationItem.rightBarButtonItem = langItem;
     }
+}
+
+- (void)sciShowLanguageInfo {
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:SCILocalized(@"settings.language.title")
+                         message:SCILocalized(@"settings.language.english_only")
+                  preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"settings.language.ok") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"settings.language.help_translate") style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *a) {
+        NSURL *url = [NSURL URLWithString:@"https://github.com/faroukbmiled/RyukGram#translating-ryukgram"];
+        if (url) [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (UIMenu *)sciBuildLanguageMenu {
+    NSString *current = [[NSUserDefaults standardUserDefaults] stringForKey:SCILanguagePrefKey] ?: @"system";
+    NSMutableArray<UIAction *> *actions = [NSMutableArray array];
+
+    for (NSDictionary<NSString *, NSString *> *lang in SCIAvailableLanguages()) {
+        NSString *code = lang[@"code"];
+        NSString *title = [code isEqualToString:@"system"]
+            ? SCILocalized(@"settings.language.system")
+            : lang[@"native"];
+
+        UIAction *action = [UIAction actionWithTitle:title
+                                                image:nil
+                                           identifier:nil
+                                              handler:^(UIAction * _Nonnull a) {
+            NSString *prev = [[NSUserDefaults standardUserDefaults] stringForKey:SCILanguagePrefKey] ?: @"system";
+            if ([prev isEqualToString:code]) return;
+            [[NSUserDefaults standardUserDefaults] setObject:code forKey:SCILanguagePrefKey];
+            SCILocalizationReset();
+            [self sciApplyLanguageChange];
+            // Most IG-side hooks cache their labels at load time, so a full
+            // restart is the only way to flip every menu/button cleanly.
+            [SCIUtils showRestartConfirmation];
+        }];
+        action.state = [code isEqualToString:current] ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [actions addObject:action];
+    }
+
+    return [UIMenu menuWithTitle:SCILocalized(@"settings.language.title") children:actions];
+}
+
+- (void)sciApplyLanguageChange {
+    // Root title + search placeholder reflect the new language immediately.
+    self.title = SCILocalized(@"settings.title");
+    self.searchController.searchBar.placeholder = SCILocalized(@"settings.search.placeholder");
+    if (self.navigationItem.rightBarButtonItem.menu) {
+        self.navigationItem.rightBarButtonItem.menu = [self sciBuildLanguageMenu];
+    }
+    [self.tableView reloadData];
+
+    // Features watching for runtime label refreshes (IG menu items, overlay
+    // buttons, toasts) can subscribe to this to re-read their strings.
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"SCILanguageDidChange" object:nil];
 }
 
 - (void)sciDismissSettings {
@@ -92,6 +165,17 @@ static char rowStaticRef[] = "row";
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self.tableView reloadData];
+    [self sciStyleSearchBar];
+}
+
+- (void)sciStyleSearchBar { [SCISearchBarStyler styleSearchBar:self.searchController.searchBar]; }
+
+- (void)willPresentSearchController:(UISearchController *)searchController { [self sciStyleSearchBar]; }
+- (void)didPresentSearchController:(UISearchController *)searchController {
+    [self sciStyleSearchBar];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self sciStyleSearchBar];
+    });
 }
 
 #pragma mark - Search
@@ -163,13 +247,17 @@ static char rowStaticRef[] = "row";
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-    
+    // Without this the search bar strands itself as a floating bar on return.
+    if (![SCIUtils getBoolPref:@"liquid_glass_buttons"] && self.searchController.isActive) {
+        self.searchController.active = NO;
+    }
+
     if (![[[NSUserDefaults standardUserDefaults] objectForKey:@"SCInstaFirstRun"] isEqualToString:SCIVersionString]) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"RyukGram Settings Info"
-                                                                       message:@"In the future: Hold down on the three lines at the top right of your profile page, to re-open RyukGram settings."
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:SCILocalized(@"settings.firstrun.title")
+                                                                       message:SCILocalized(@"settings.firstrun.message")
                                                                 preferredStyle:UIAlertControllerStyleAlert];
-        
-        [alert addAction:[UIAlertAction actionWithTitle:@"I understand!"
+
+        [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"settings.firstrun.ok")
                                                   style:UIAlertActionStyleDefault
                                                 handler:nil]];
         
@@ -235,15 +323,19 @@ static char rowStaticRef[] = "row";
             
         case SCITableCellSwitch: {
             UISwitch *toggle = [UISwitch new];
-            toggle.on = [[NSUserDefaults standardUserDefaults] boolForKey:row.defaultsKey];
+            toggle.on = row.disabled ? NO : [[NSUserDefaults standardUserDefaults] boolForKey:row.defaultsKey];
             toggle.onTintColor = [SCIUtils SCIColor_Primary];
-            
+            toggle.enabled = !row.disabled;
+
             objc_setAssociatedObject(toggle, rowStaticRef, row, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-            
+
             [toggle addTarget:self action:@selector(switchChanged:) forControlEvents:UIControlEventValueChanged];
-            
+
             cell.accessoryView = toggle;
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            if (row.disabled) {
+                cell.contentView.alpha = 0.4;
+            }
             break;
         }
             
@@ -288,9 +380,13 @@ static char rowStaticRef[] = "row";
             menuButton.configuration = config;
 
             [menuButton sizeToFit];
-            
+
             cell.accessoryView = menuButton;
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            if (row.disabled) {
+                menuButton.enabled = NO;
+                cell.contentView.alpha = 0.4;
+            }
             break;
         }
             
@@ -313,7 +409,9 @@ static char rowStaticRef[] = "row";
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     if ([self isSearching]) {
         NSUInteger n = self.searchResults.count;
-        return n ? [NSString stringWithFormat:@"%lu result%@", (unsigned long)n, n == 1 ? @"" : @"s"] : @"No results";
+        if (n == 0) return SCILocalized(@"settings.results.none");
+        NSString *fmt = n == 1 ? SCILocalized(@"settings.results.one") : SCILocalized(@"settings.results.many");
+        return [NSString stringWithFormat:fmt, (unsigned long)n];
     }
     return self.sections[section][@"header"];
 }
@@ -366,6 +464,10 @@ static char rowStaticRef[] = "row";
     
     if (row.requiresRestart) {
         [SCIUtils showRestartConfirmation];
+    }
+
+    if ([row.defaultsKey isEqualToString:@"hide_suggested_stories"]) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"SCISuggestedStoriesReload" object:nil];
     }
 }
 

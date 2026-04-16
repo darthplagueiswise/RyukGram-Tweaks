@@ -41,7 +41,7 @@
 
     // Notify user
     JGProgressHUD *HUD = [[JGProgressHUD alloc] init];
-    HUD.textLabel.text = @"Copied text to clipboard";
+    HUD.textLabel.text = SCILocalized(@"Copied text to clipboard");
     HUD.indicatorView = [[JGProgressHUDSuccessIndicatorView alloc] init];
     
     [HUD showInView:topMostController().view];

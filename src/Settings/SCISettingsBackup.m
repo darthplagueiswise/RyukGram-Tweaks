@@ -6,6 +6,7 @@
 #import <CoreImage/CoreImage.h>
 #import <objc/runtime.h>
 #import "../../modules/JGProgressHUD/JGProgressHUD.h"
+#import "SCISearchBarStyler.h"
 
 // Settings backup/restore: export/import prefs as JSON file
 // or photo. Import resets known prefs to defaults then applies imported ones.
@@ -43,7 +44,7 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
 + (NSString *)menuTitleForBaseMenu:(UIMenu *)menu values:(NSDictionary *)values resolvedKey:(id *)outRaw;
 @end
 
-@interface SCIBackupPreviewVC : UIViewController <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating>
+@interface SCIBackupPreviewVC : UIViewController <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating, UISearchControllerDelegate>
 @property (nonatomic, strong) NSMutableDictionary *mutableSettings;
 @property (nonatomic, copy) NSString *primaryActionTitle;
 @property (nonatomic, copy) void (^primaryAction)(SCIBackupPreviewVC *vc);
@@ -100,14 +101,40 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
 
     UISearchController *sc = [[UISearchController alloc] initWithSearchResultsController:nil];
     sc.searchResultsUpdater = self;
+    sc.delegate = self;
     sc.obscuresBackgroundDuringPresentation = NO;
-    sc.searchBar.placeholder = @"Search settings";
+    sc.searchBar.placeholder = SCILocalized(@"Search settings");
     self.navigationItem.searchController = sc;
     self.navigationItem.hidesSearchBarWhenScrolling = NO;
+    if (![SCIUtils getBoolPref:@"liquid_glass_buttons"]) {
+        self.definesPresentationContext = YES;
+    }
     self.searchController = sc;
 
     self.allGroups = [SCISettingsBackup buildPreviewGroupsForSettings:self.mutableSettings];
     self.visibleGroups = self.allGroups;
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self sciStyleSearchBar];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    if (![SCIUtils getBoolPref:@"liquid_glass_buttons"] && self.searchController.isActive) {
+        self.searchController.active = NO;
+    }
+}
+
+- (void)sciStyleSearchBar { [SCISearchBarStyler styleSearchBar:self.searchController.searchBar]; }
+
+- (void)willPresentSearchController:(UISearchController *)searchController { [self sciStyleSearchBar]; }
+- (void)didPresentSearchController:(UISearchController *)searchController {
+    [self sciStyleSearchBar];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self sciStyleSearchBar];
+    });
 }
 
 #pragma mark Search
@@ -194,14 +221,14 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
 
 - (UIMenu *)buildMoreMenu {
     __weak typeof(self) weakSelf = self;
-    UIAction *editAction = [UIAction actionWithTitle:(self.editMode ? @"Done editing" : @"Edit values")
+    UIAction *editAction = [UIAction actionWithTitle:(self.editMode ? SCILocalized(@"Done editing") : SCILocalized(@"Edit values"))
                                                 image:[UIImage systemImageNamed:(self.editMode ? @"checkmark" : @"pencil")]
                                            identifier:nil
                                               handler:^(__kindof UIAction *_) {
         [weakSelf toggleEditMode];
     }];
     if (self.jsonMode) editAction.attributes = UIMenuElementAttributesDisabled;
-    UIAction *jsonAction = [UIAction actionWithTitle:(self.jsonMode ? @"Form view" : @"Raw JSON view")
+    UIAction *jsonAction = [UIAction actionWithTitle:(self.jsonMode ? SCILocalized(@"Form view") : SCILocalized(@"Raw JSON view"))
                                                 image:[UIImage systemImageNamed:(self.jsonMode ? @"list.bullet" : @"curlybraces")]
                                            identifier:nil
                                               handler:^(__kindof UIAction *_) {
@@ -273,7 +300,7 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
                                   withRowAnimation:UITableViewRowAnimationFade];
         }]];
     }
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [sheet addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
     sheet.popoverPresentationController.sourceView = cell;
     sheet.popoverPresentationController.sourceRect = cell.bounds;
@@ -372,7 +399,7 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     if (self.expectingExportPick) {
         self.expectingExportPick = NO;
-        [SCISettingsBackup showSuccessHUD:@"Settings exported"];
+        [SCISettingsBackup showSuccessHUD:SCILocalized(@"Settings exported")];
         return;
     }
     NSURL *url = urls.firstObject;
@@ -381,7 +408,7 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
     NSData *data = [NSData dataWithContentsOfURL:url];
     if (access) [url stopAccessingSecurityScopedResource];
     if (!data) {
-        [SCISettingsBackup showError:@"Could not read file."];
+        [SCISettingsBackup showError:SCILocalized(@"Could not read file.")];
         return;
     }
     [SCISettingsBackup presentApplyConfirmationForData:data];
@@ -413,7 +440,11 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
 
 + (NSSet<NSString *> *)allPrefKeys {
     NSMutableSet *keys = [NSMutableSet set];
+    // Settings UI (recursive — picks up every cell + menu)
     [self collectKeysFromSections:[SCITweakSettings sections] into:keys];
+    // Every default registered by Tweak.x — covers prefs without a UI cell
+    [keys addObjectsFromArray:[[SCIUtils sciRegisteredDefaults] allKeys]];
+    // Manually-tracked storage (lists/dicts not exposed via registerDefaults)
     [keys addObjectsFromArray:[self extraDataKeys]];
     return keys;
 }
@@ -574,7 +605,7 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
                 r.kind = SCIBackupPreviewRowKindSwitch;
                 id raw = values[s.defaultsKey];
                 BOOL on = [raw respondsToSelector:@selector(boolValue)] ? [raw boolValue] : NO;
-                r.value = on ? @"On" : @"Off";
+                r.value = on ? SCILocalized(@"On") : SCILocalized(@"Off");
             } else if (s.type == SCITableCellStepper) {
                 r.kind = SCIBackupPreviewRowKindReadOnly;
                 id raw = values[s.defaultsKey];
@@ -623,7 +654,7 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
     if ([raw isKindOfClass:[NSNumber class]]) {
         NSNumber *n = raw;
         const char *t = n.objCType;
-        if (t && strcmp(t, "c") == 0) return n.boolValue ? @"On" : @"Off";
+        if (t && strcmp(t, "c") == 0) return n.boolValue ? SCILocalized(@"On") : SCILocalized(@"Off");
         return n.stringValue;
     }
     if ([raw isKindOfClass:[NSString class]]) return raw;
@@ -705,7 +736,7 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
 }
 
 + (void)showError:(NSString *)message {
-    UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Import failed"
+    UIAlertController *a = [UIAlertController alertControllerWithTitle:SCILocalized(@"Import failed")
                                                                message:message
                                                         preferredStyle:UIAlertControllerStyleAlert];
     [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
@@ -718,7 +749,7 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
     NSDictionary *snap = [self snapshotCurrentSettings];
 
     SCIBackupPreviewVC *vc = [[SCIBackupPreviewVC alloc] init];
-    vc.title = @"Export settings";
+    vc.title = SCILocalized(@"Export settings");
     vc.mutableSettings = [snap mutableCopy];
     vc.primaryActionTitle = @"Save";
     vc.primaryAction = ^(SCIBackupPreviewVC *previewVC) {
@@ -727,7 +758,7 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
         NSURL *tmp = [[NSFileManager defaultManager].temporaryDirectory URLByAppendingPathComponent:fname];
         NSError *err = nil;
         [data writeToURL:tmp options:NSDataWritingAtomic error:&err];
-        if (err) { [self showError:@"Could not write temporary file."]; return; }
+        if (err) { [self showError:SCILocalized(@"Could not write temporary file.")]; return; }
         UIDocumentPickerViewController *p =
             [[UIDocumentPickerViewController alloc] initForExportingURLs:@[tmp]];
         SCIBackupHelper *helper = [SCIBackupHelper shared];
@@ -747,6 +778,23 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
     [self pickFromFiles];
 }
 
++ (void)presentReset {
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:SCILocalized(@"Reset all settings?")
+                         message:SCILocalized(@"Every RyukGram preference will revert to its built-in default. This can't be undone.")
+                  preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Reset")
+                                              style:UIAlertActionStyleDestructive
+                                            handler:^(__unused UIAlertAction *a) {
+        NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+        for (NSString *key in [self allPrefKeys]) [d removeObjectForKey:key];
+        [d synchronize];
+        [SCIUtils showRestartConfirmation];
+    }]];
+    [topMostController() presentViewController:alert animated:YES completion:nil];
+}
+
 + (void)pickFromFiles {
     UIDocumentPickerViewController *p =
         [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.json", @"public.text", @"public.data"]
@@ -759,24 +807,24 @@ typedef NS_ENUM(NSInteger, SCIBackupPreviewRowKind) {
 + (void)presentApplyConfirmationForData:(NSData *)data {
     NSDictionary *settings = [self parseSettingsFromData:data];
     if (!settings) {
-        [self showError:@"File is not a valid RyukGram settings export."];
+        [self showError:SCILocalized(@"File is not a valid RyukGram settings export.")];
         return;
     }
 
     SCIBackupPreviewVC *vc = [[SCIBackupPreviewVC alloc] init];
-    vc.title = @"Import preview";
+    vc.title = SCILocalized(@"Import preview");
     vc.mutableSettings = [settings mutableCopy];
     vc.primaryActionTitle = @"Apply";
     vc.primaryAction = ^(SCIBackupPreviewVC *previewVC) {
         UIAlertController *confirm =
-            [UIAlertController alertControllerWithTitle:@"Apply imported settings?"
-                                                message:@"All RyukGram settings will be reset to defaults and the imported values applied. The app will need to restart for some changes to take effect."
+            [UIAlertController alertControllerWithTitle:SCILocalized(@"Apply imported settings?")
+                                                message:SCILocalized(@"All RyukGram settings will be reset to defaults and the imported values applied. The app will need to restart for some changes to take effect.")
                                          preferredStyle:UIAlertControllerStyleAlert];
-        [confirm addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-        [confirm addAction:[UIAlertAction actionWithTitle:@"Apply" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *_) {
+        [confirm addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+        [confirm addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Apply") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *_) {
             [SCISettingsBackup applySettings:previewVC.mutableSettings];
             [previewVC dismissViewControllerAnimated:YES completion:^{
-                [SCISettingsBackup showSuccessHUD:@"Settings imported"];
+                [SCISettingsBackup showSuccessHUD:SCILocalized(@"Settings imported")];
                 [SCIUtils showRestartConfirmation];
             }];
         }]];

@@ -2,70 +2,145 @@
 #import "../PhotoAlbum.h"
 #import <Photos/Photos.h>
 
+#pragma mark - Ticket slot
+
+@interface SCIDownloadSlot : NSObject
+@property (nonatomic, copy) NSString *ticketId;
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, assign) float progress;
+@property (nonatomic, copy) void (^onCancel)(void);
+@property (nonatomic, assign) BOOL finished;
+@end
+@implementation SCIDownloadSlot @end
+
 #pragma mark - SCIDownloadPillView
 
+@interface SCIDownloadPillView ()
+@property (nonatomic, strong) NSMutableArray<SCIDownloadSlot *> *slots;
+@end
+
 @implementation SCIDownloadPillView
+
++ (instancetype)shared {
+    static SCIDownloadPillView *s;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ s = [[SCIDownloadPillView alloc] init]; });
+    return s;
+}
 
 - (instancetype)init {
     self = [super initWithFrame:CGRectZero];
     if (self) {
-        self.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.92];
-        self.layer.cornerRadius = 20;
+        _slots = [NSMutableArray array];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+            selector:@selector(_sciAppDidBecomeActive)
+            name:UIApplicationDidBecomeActiveNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+            selector:@selector(_sciAppDidEnterBackground)
+            name:UIApplicationDidEnterBackgroundNotification object:nil];
+        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
+        blurView.translatesAutoresizingMaskIntoConstraints = NO;
+        blurView.layer.cornerRadius = 16;
+        blurView.clipsToBounds = YES;
+        [self addSubview:blurView];
+        [NSLayoutConstraint activateConstraints:@[
+            [blurView.topAnchor constraintEqualToAnchor:self.topAnchor],
+            [blurView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+            [blurView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+            [blurView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        ]];
+
+        self.layer.cornerRadius = 16;
         self.clipsToBounds = YES;
         self.alpha = 0;
 
-        // Circular progress (using a small CAShapeLayer ring)
-        _progressRing = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
-        _progressRing.progressTintColor = [UIColor systemBlueColor];
-        _progressRing.trackTintColor = [UIColor colorWithWhite:0.3 alpha:1.0];
-        _progressRing.translatesAutoresizingMaskIntoConstraints = NO;
-        _progressRing.layer.cornerRadius = 2;
-        _progressRing.clipsToBounds = YES;
-        [self addSubview:_progressRing];
+        // Icon
+        _iconView = [[UIImageView alloc] init];
+        _iconView.translatesAutoresizingMaskIntoConstraints = NO;
+        _iconView.tintColor = [UIColor whiteColor];
+        _iconView.contentMode = UIViewContentModeScaleAspectFit;
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightMedium];
+        _iconView.image = [UIImage systemImageNamed:@"arrow.down.circle" withConfiguration:cfg];
+        [self addSubview:_iconView];
 
         // Text
         _textLabel = [[UILabel alloc] init];
-        _textLabel.text = @"Downloading 0%";
+        _textLabel.text = SCILocalized(@"Downloading...");
         _textLabel.textColor = [UIColor whiteColor];
-        _textLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+        _textLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+        _textLabel.textAlignment = NSTextAlignmentCenter;
         _textLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [self addSubview:_textLabel];
 
         // Subtitle
         _subtitleLabel = [[UILabel alloc] init];
-        _subtitleLabel.text = @"Tap to cancel";
-        _subtitleLabel.textColor = [UIColor colorWithWhite:0.6 alpha:1.0];
-        _subtitleLabel.font = [UIFont systemFontOfSize:10 weight:UIFontWeightRegular];
+        _subtitleLabel.text = SCILocalized(@"Tap to cancel");
+        _subtitleLabel.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
+        _subtitleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightRegular];
         _subtitleLabel.textAlignment = NSTextAlignmentCenter;
         _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [self addSubview:_subtitleLabel];
 
-        // Tap gesture for cancel
+        // Progress bar
+        _progressBar = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
+        _progressBar.progressTintColor = [UIColor systemBlueColor];
+        _progressBar.trackTintColor = [UIColor colorWithWhite:0.3 alpha:0.5];
+        _progressBar.translatesAutoresizingMaskIntoConstraints = NO;
+        _progressBar.layer.cornerRadius = 1.5;
+        _progressBar.clipsToBounds = YES;
+        [self addSubview:_progressBar];
+
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap)];
         [self addGestureRecognizer:tap];
 
-        // Layout:  [progress bar]
-        //          [text centered]
-        //          [subtitle centered]
         [NSLayoutConstraint activateConstraints:@[
-            [_progressRing.topAnchor constraintEqualToAnchor:self.topAnchor constant:12],
-            [_progressRing.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16],
-            [_progressRing.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16],
-            [_progressRing.heightAnchor constraintEqualToConstant:4],
+            [_iconView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14],
+            [_iconView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor constant:-2],
+            [_iconView.widthAnchor constraintEqualToConstant:22],
+            [_iconView.heightAnchor constraintEqualToConstant:22],
 
-            [_textLabel.topAnchor constraintEqualToAnchor:_progressRing.bottomAnchor constant:6],
-            [_textLabel.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
+            [_textLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:10],
+            [_textLabel.leadingAnchor constraintEqualToAnchor:_iconView.trailingAnchor constant:10],
+            [_textLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14],
 
-            [_subtitleLabel.topAnchor constraintEqualToAnchor:_textLabel.bottomAnchor constant:2],
-            [_subtitleLabel.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
-            [_subtitleLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-10],
+            [_subtitleLabel.topAnchor constraintEqualToAnchor:_textLabel.bottomAnchor constant:1],
+            [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_textLabel.leadingAnchor],
+            [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_textLabel.trailingAnchor],
+
+            [_progressBar.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+            [_progressBar.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+            [_progressBar.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+            [_progressBar.heightAnchor constraintEqualToConstant:3],
+
+            [_subtitleLabel.bottomAnchor constraintEqualToAnchor:_progressBar.topAnchor constant:-8],
         ]];
     }
     return self;
 }
 
 - (void)handleTap {
-    if (self.onCancel) self.onCancel();
+    if (self.slots.count > 0) {
+        SCIDownloadSlot *top = self.slots.lastObject;
+        void (^cb)(void) = top.onCancel;
+        top.onCancel = nil;
+        if (cb) cb();
+        return;
+    }
+    void (^cb)(void) = self.onCancel;
+    self.onCancel = nil;
+    if (cb) cb();
+}
+
+- (void)resetState {
+    self.progressBar.progress = 0;
+    self.progressBar.hidden = NO;
+    self.subtitleLabel.hidden = NO;
+    self.subtitleLabel.text = SCILocalized(@"Tap to cancel");
+    self.textLabel.text = SCILocalized(@"Downloading...");
+    UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightMedium];
+    self.iconView.image = [UIImage systemImageNamed:@"arrow.down.circle" withConfiguration:cfg];
+    self.iconView.tintColor = [UIColor whiteColor];
 }
 
 - (void)showInView:(UIView *)view {
@@ -74,23 +149,32 @@
     [view addSubview:self];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.topAnchor constraintEqualToAnchor:view.safeAreaLayoutGuide.topAnchor constant:4],
+        [self.topAnchor constraintEqualToAnchor:view.safeAreaLayoutGuide.topAnchor constant:8],
         [self.centerXAnchor constraintEqualToAnchor:view.centerXAnchor],
-        [self.widthAnchor constraintGreaterThanOrEqualToConstant:160],
-        [self.widthAnchor constraintLessThanOrEqualToConstant:220],
+        [self.widthAnchor constraintGreaterThanOrEqualToConstant:200],
+        [self.widthAnchor constraintLessThanOrEqualToConstant:300],
     ]];
 
-    [UIView animateWithDuration:0.25 animations:^{
+    [UIView animateWithDuration:0.3 delay:0 usingSpringWithDamping:0.8 initialSpringVelocity:0.5
+                        options:UIViewAnimationOptionCurveEaseOut animations:^{
         self.alpha = 1;
-    }];
+    } completion:nil];
 }
 
 - (void)dismiss {
-    [UIView animateWithDuration:0.2 animations:^{
-        self.alpha = 0;
-    } completion:^(BOOL finished) {
-        [self removeFromSuperview];
-    }];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // A new ticket raced in — keep the pill alive.
+        if (self.slots.count > 0) return;
+        if (self.alpha <= 0.01 && !self.superview) return;
+        self.onCancel = nil;
+        [UIView animateWithDuration:0.25 animations:^{
+            self.alpha = 0;
+            self.transform = CGAffineTransformMakeScale(0.9, 0.9);
+        } completion:^(BOOL finished) {
+            [self removeFromSuperview];
+            self.transform = CGAffineTransformIdentity;
+        }];
+    });
 }
 
 - (void)dismissAfterDelay:(NSTimeInterval)delay {
@@ -100,11 +184,201 @@
 }
 
 - (void)setProgress:(float)progress {
-    [self.progressRing setProgress:progress animated:YES];
+    self.progressBar.hidden = NO;
+    [self.progressBar setProgress:progress animated:YES];
 }
 
 - (void)setText:(NSString *)text {
     self.textLabel.text = text;
+}
+
+- (void)setSubtitle:(NSString *)text {
+    self.subtitleLabel.text = text;
+    self.subtitleLabel.hidden = (text.length == 0);
+}
+
+- (void)showSuccess:(NSString *)text {
+    UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightMedium];
+    self.iconView.image = [UIImage systemImageNamed:@"checkmark.circle.fill" withConfiguration:cfg];
+    self.iconView.tintColor = [UIColor systemGreenColor];
+    self.textLabel.text = text;
+    self.subtitleLabel.hidden = YES;
+    self.progressBar.hidden = YES;
+    self.onCancel = nil;
+}
+
+- (void)showError:(NSString *)text {
+    UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightMedium];
+    self.iconView.image = [UIImage systemImageNamed:@"xmark.circle.fill" withConfiguration:cfg];
+    self.iconView.tintColor = [UIColor systemRedColor];
+    self.textLabel.text = text;
+    self.subtitleLabel.hidden = YES;
+    self.progressBar.hidden = YES;
+    self.onCancel = nil;
+}
+
+- (void)showBulkProgress:(NSUInteger)completed total:(NSUInteger)total {
+    self.textLabel.text = [NSString stringWithFormat:@"Downloading %lu of %lu", (unsigned long)completed + 1, (unsigned long)total];
+    self.subtitleLabel.text = SCILocalized(@"Tap to cancel");
+    self.subtitleLabel.hidden = NO;
+    self.progressBar.hidden = NO;
+    [self.progressBar setProgress:(float)completed / (float)total animated:YES];
+}
+
+#pragma mark - Ticket API
+
+- (void)_onMain:(dispatch_block_t)block {
+    if ([NSThread isMainThread]) block();
+    else dispatch_async(dispatch_get_main_queue(), block);
+}
+
+- (SCIDownloadSlot *)_slotForId:(NSString *)ticketId {
+    if (!ticketId) return nil;
+    for (SCIDownloadSlot *s in self.slots) {
+        if ([s.ticketId isEqualToString:ticketId]) return s;
+    }
+    return nil;
+}
+
+- (void)_renderTop {
+    SCIDownloadSlot *top = self.slots.lastObject;
+    if (!top) return;
+    UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightMedium];
+    self.iconView.image = [UIImage systemImageNamed:@"arrow.down.circle" withConfiguration:cfg];
+    self.iconView.tintColor = [UIColor whiteColor];
+    self.textLabel.text = top.title ?: @"Downloading...";
+    self.progressBar.hidden = NO;
+    [self.progressBar setProgress:top.progress animated:YES];
+    self.subtitleLabel.hidden = NO;
+    if (self.slots.count > 1) {
+        self.subtitleLabel.text = [NSString stringWithFormat:@"%lu active — tap to cancel",
+                                   (unsigned long)self.slots.count];
+    } else {
+        self.subtitleLabel.text = SCILocalized(@"Tap to cancel");
+    }
+}
+
+- (NSString *)beginTicketWithTitle:(NSString *)title onCancel:(void (^)(void))cancel {
+    NSString *ticketId = [[NSUUID UUID] UUIDString];
+    void (^cancelCopy)(void) = [cancel copy];
+    [self _onMain:^{
+        SCIDownloadSlot *slot = [SCIDownloadSlot new];
+        slot.ticketId = ticketId;
+        slot.title = title ?: @"Downloading...";
+        slot.progress = 0;
+        slot.onCancel = cancelCopy;
+        [self.slots addObject:slot];
+
+        // Reset visual state so the prior download's final frame doesn't leak in.
+        [self.progressBar setProgress:0 animated:NO];
+        self.alpha = 1;
+        self.transform = CGAffineTransformIdentity;
+        if (!self.superview) {
+            UIView *host = [UIApplication sharedApplication].keyWindow ?: topMostController().view;
+            if (host) [self showInView:host];
+        }
+        [self _renderTop];
+    }];
+    return ticketId;
+}
+
+- (void)_sciAppDidBecomeActive {
+    [self _onMain:^{
+        if (self.slots.count == 0 && (self.superview || self.alpha > 0.01)) {
+            self.alpha = 0;
+            self.transform = CGAffineTransformIdentity;
+            [self removeFromSuperview];
+        } else if (self.slots.count > 0) {
+            [self _renderTop];
+        }
+    }];
+}
+
+// iOS suspends networking + ffmpeg on background — cancel active tickets so the
+// pill clears cleanly on return. User re-initiates the download.
+- (void)_sciAppDidEnterBackground {
+    [self _onMain:^{
+        for (SCIDownloadSlot *slot in [self.slots copy]) {
+            void (^cb)(void) = slot.onCancel;
+            slot.onCancel = nil;
+            if (cb) cb();
+        }
+    }];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)updateTicket:(NSString *)ticketId progress:(float)progress {
+    [self _onMain:^{
+        SCIDownloadSlot *s = [self _slotForId:ticketId];
+        if (!s || s.finished) return;
+        s.progress = progress;
+        if (self.slots.lastObject == s) [self.progressBar setProgress:progress animated:YES];
+    }];
+}
+
+- (void)updateTicket:(NSString *)ticketId text:(NSString *)text {
+    [self _onMain:^{
+        SCIDownloadSlot *s = [self _slotForId:ticketId];
+        if (!s || s.finished) return;
+        s.title = text ?: s.title;
+        if (self.slots.lastObject == s) self.textLabel.text = s.title;
+    }];
+}
+
+- (void)_removeSlot:(SCIDownloadSlot *)slot
+        finalText:(NSString *)finalText
+        finalIcon:(NSString *)finalIcon
+        iconColor:(UIColor *)iconColor {
+    if (!slot || slot.finished) return;
+    slot.finished = YES;
+    slot.onCancel = nil;
+    [self.slots removeObject:slot];
+
+    if (self.slots.count > 0) {
+        [self _renderTop];
+        return;
+    }
+
+    UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightMedium];
+    self.iconView.image = [UIImage systemImageNamed:finalIcon withConfiguration:cfg];
+    self.iconView.tintColor = iconColor;
+    self.textLabel.text = finalText;
+    self.subtitleLabel.hidden = YES;
+    self.progressBar.hidden = YES;
+    [self dismissAfterDelay:1.2];
+}
+
+- (void)finishTicket:(NSString *)ticketId successMessage:(NSString *)message {
+    [self _onMain:^{
+        SCIDownloadSlot *s = [self _slotForId:ticketId];
+        [self _removeSlot:s
+                finalText:message ?: @"Done"
+                finalIcon:@"checkmark.circle.fill"
+                iconColor:[UIColor systemGreenColor]];
+    }];
+}
+
+- (void)finishTicket:(NSString *)ticketId errorMessage:(NSString *)message {
+    [self _onMain:^{
+        SCIDownloadSlot *s = [self _slotForId:ticketId];
+        [self _removeSlot:s
+                finalText:message ?: @"Failed"
+                finalIcon:@"xmark.circle.fill"
+                iconColor:[UIColor systemRedColor]];
+    }];
+}
+
+- (void)finishTicket:(NSString *)ticketId cancelled:(NSString *)message {
+    [self _onMain:^{
+        SCIDownloadSlot *s = [self _slotForId:ticketId];
+        [self _removeSlot:s
+                finalText:message ?: @"Cancelled"
+                finalIcon:@"xmark.circle.fill"
+                iconColor:[UIColor systemOrangeColor]];
+    }];
 }
 
 @end
@@ -127,33 +401,13 @@
 }
 
 - (void)downloadFileWithURL:(NSURL *)url fileExtension:(NSString *)fileExtension hudLabel:(NSString *)hudLabel {
-    // Dismiss any existing pill
-    [self.pill dismiss];
-
-    self.pill = [[SCIDownloadPillView alloc] init];
-
-    if (hudLabel) {
-        [self.pill setText:hudLabel];
-    }
-
-    if (!self.showProgress) {
-        self.pill.progressRing.hidden = YES;
-        self.pill.subtitleLabel.text = nil;
-    }
+    SCIDownloadPillView *pill = [SCIDownloadPillView shared];
+    self.pill = pill;
 
     __weak typeof(self) weakSelf = self;
-    self.pill.onCancel = ^{
+    self.ticketId = [pill beginTicketWithTitle:hudLabel ?: @"Downloading..." onCancel:^{
         [weakSelf.downloadManager cancelDownload];
-    };
-
-    // Show on keyWindow so it survives VC transitions (e.g. leaving stories)
-    UIView *hostView = [UIApplication sharedApplication].keyWindow;
-    if (!hostView) hostView = topMostController().view;
-    if (!hostView) {
-        NSLog(@"[SCInsta] Download: No valid view");
-        return;
-    }
-    [self.pill showInView:hostView];
+    }];
 
     NSLog(@"[SCInsta] Download: Will start download for url \"%@\" with file extension: \".%@\"", url, fileExtension);
     [self.downloadManager downloadFileWithURL:url fileExtension:fileExtension];
@@ -164,46 +418,30 @@
 }
 
 - (void)downloadDidCancel {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.pill setText:@"Cancelled"];
-        self.pill.subtitleLabel.text = nil;
-        self.pill.progressRing.hidden = YES;
-        [self.pill dismissAfterDelay:0.8];
-    });
+    [self.pill finishTicket:self.ticketId cancelled:@"Cancelled"];
     NSLog(@"[SCInsta] Download: Download cancelled");
 }
 
 - (void)downloadDidProgress:(float)progress {
-    if (self.showProgress) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self.pill setProgress:progress];
-            [self.pill setText:[NSString stringWithFormat:@"Downloading %d%%", (int)(progress * 100)]];
-        });
-    }
+    if (!self.showProgress) return;
+    [self.pill updateTicket:self.ticketId progress:progress];
+    [self.pill updateTicket:self.ticketId text:[NSString stringWithFormat:@"Downloading %d%%", (int)(progress * 100)]];
 }
 
 - (void)downloadDidFinishWithError:(NSError *)error {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (error && error.code != NSURLErrorCancelled) {
-            NSLog(@"[SCInsta] Download: Download failed with error: \"%@\"", error);
-            [self.pill setText:@"Download failed"];
-            self.pill.subtitleLabel.text = error.localizedDescription;
-            self.pill.progressRing.hidden = YES;
-            [self.pill dismissAfterDelay:3.0];
-        } else if (!error) {
-            // nil error without fileURL callback — dismiss stale pill
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                if (self.pill.superview) [self.pill dismissAfterDelay:0];
-            });
-        }
-    });
+    if (error && error.code != NSURLErrorCancelled) {
+        NSLog(@"[SCInsta] Download: Download failed with error: \"%@\"", error);
+        [self.pill finishTicket:self.ticketId errorMessage:SCILocalized(@"Download failed")];
+    }
 }
 
 - (void)downloadDidFinishWithFileURL:(NSURL *)fileURL {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self.pill dismiss];
-
         NSLog(@"[SCInsta] Download: Finished with url: \"%@\"", [fileURL absoluteString]);
+        // saveToPhotos finishes the ticket after the PH completion fires.
+        if (self.action != saveToPhotos) {
+            [self.pill finishTicket:self.ticketId successMessage:SCILocalized(@"Done")];
+        }
 
         switch (self.action) {
             case share:
@@ -218,7 +456,7 @@
                 [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
                     if (status != PHAuthorizationStatusAuthorized) {
                         dispatch_async(dispatch_get_main_queue(), ^{
-                            [SCIUtils showErrorHUDWithDescription:@"Photo library access denied"];
+                            [SCIUtils showErrorHUDWithDescription:SCILocalized(@"Photo library access denied")];
                         });
                         return;
                     }
@@ -227,17 +465,10 @@
                     void (^onDone)(BOOL, NSError *) = ^(BOOL success, NSError *error) {
                         dispatch_async(dispatch_get_main_queue(), ^{
                             if (success) {
-                                SCIDownloadPillView *donePill = [[SCIDownloadPillView alloc] init];
-                                donePill.progressRing.hidden = YES;
-                                donePill.subtitleLabel.text = nil;
-                                [donePill setText:useAlbum ? @"Saved to RyukGram" : @"Saved to Photos"];
-                                UIView *hostView = topMostController().view;
-                                if (hostView) {
-                                    [donePill showInView:hostView];
-                                    [donePill dismissAfterDelay:1.5];
-                                }
+                                [self.pill finishTicket:self.ticketId
+                                         successMessage:useAlbum ? SCILocalized(@"Saved to RyukGram") : SCILocalized(@"Saved to Photos")];
                             } else {
-                                [SCIUtils showErrorHUDWithDescription:@"Failed to save to Photos"];
+                                [self.pill finishTicket:self.ticketId errorMessage:SCILocalized(@"Failed to save")];
                             }
                         });
                     };

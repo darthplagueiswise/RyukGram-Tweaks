@@ -130,12 +130,12 @@ static char targetStaticRef[] = "target";
         [rightButton sizeToFit];
 
         [rightButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
-            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Enter Emoji Text"
-                                                                           message:@"Click the Apply button after this to see the emoji"
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:SCILocalized(@"Enter Emoji Text")
+                                                                           message:SCILocalized(@"Click the Apply button after this to see the emoji")
                                                                     preferredStyle:UIAlertControllerStyleAlert];
             
             [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-                textField.placeholder = @"Type emoji...";
+                textField.placeholder = SCILocalized(@"Type emoji...");
             }];
             
             [alert addAction:[UIAlertAction actionWithTitle:@"OK"
@@ -145,7 +145,7 @@ static char targetStaticRef[] = "target";
                 [self applySCICustomTheme:@"Emoji"];
             }]];
             
-            [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
+            [alert addAction:[UIAlertAction actionWithTitle:SCILocalized(@"Cancel")
                                                       style:UIAlertActionStyleCancel
                                                     handler:nil]];
             
