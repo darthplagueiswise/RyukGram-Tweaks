@@ -47,11 +47,3 @@ scripts/__pycache__/
 
 # FFmpegKit frameworks
 modules/ffmpegkit/
-
-# External reference tweaks
-exp_flags/
-
-# Source packaging
-zip-src.sh
-RyukGram-src-*.zip
-*.zip
