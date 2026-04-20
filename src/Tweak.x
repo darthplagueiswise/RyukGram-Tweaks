@@ -126,7 +126,24 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"hide_feed_repost": @(NO),
         @"copy_comment": @(YES),
         @"download_gif_comment": @(YES),
-        @"sci_language": @"system"
+        @"sci_language": @"system",
+        @"igt_homecoming": @(NO),
+        @"igt_prism": @(NO),
+        @"igt_dynamic_tab": @(NO),
+        @"igt_reels_first": @(NO),
+        @"igt_friends_feed": @(NO),
+        @"igt_employee": @(NO),
+        @"igt_internal": @(NO),
+        @"igt_audio_ramping": @(NO),
+        @"igt_feed_culling": @(NO),
+        @"igt_feed_dedup": @(NO),
+        @"igt_pull_to_carrera": @(NO),
+        @"igt_screenshot_block": @(NO),
+        @"igt_directnotes_friendmap": @(NO),
+        @"igt_directnotes_audio_reply": @(NO),
+        @"igt_directnotes_avatar_reply": @(NO),
+        @"igt_directnotes_gifs_reply": @(NO),
+        @"igt_directnotes_photo_reply": @(NO)
     };
     [[NSUserDefaults standardUserDefaults] registerDefaults:sciDefaults];
     [SCIUtils setSciRegisteredDefaults:sciDefaults];
@@ -850,6 +867,12 @@ static BOOL (*orig_IGTabBarEnhancedDynamicSizingEnabled)(void) = NULL;
 static BOOL (*orig_IGTabBarHomecomingWithFloatingTabEnabled)(void) = NULL;
 static BOOL (*orig_IGTabBarViewPointFixEnabled)(void) = NULL;
 static NSInteger (*orig_IGTabBarStyleForLauncherSet)(NSInteger) = NULL;
+static BOOL (*orig_IGPrismDesignSystemEnabled)(void) = NULL;
+static BOOL (*orig_IGDirectNotesFriendMapEnabled)(void) = NULL;
+static BOOL (*orig_IGDirectNotesEnableAudioNoteReplyType)(void) = NULL;
+static BOOL (*orig_IGDirectNotesEnableAvatarReplyTypes)(void) = NULL;
+static BOOL (*orig_IGDirectNotesEnableGifsStickersReplyTypes)(void) = NULL;
+static BOOL (*orig_IGDirectNotesEnablePhotoNoteReplyType)(void) = NULL;
 
 static BOOL hook_IGFloatingTabBarEnabled(void) {
     if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return YES;
@@ -865,6 +888,7 @@ static BOOL hook_IGTabBarEnhancedDynamicSizingEnabled(void) {
 }
 static BOOL hook_IGTabBarHomecomingWithFloatingTabEnabled(void) {
     if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return YES;
+    if ([SCIUtils getBoolPref:@"igt_homecoming"]) return YES;
     return orig_IGTabBarHomecomingWithFloatingTabEnabled ? orig_IGTabBarHomecomingWithFloatingTabEnabled() : NO;
 }
 static BOOL hook_IGTabBarViewPointFixEnabled(void) {
@@ -873,8 +897,64 @@ static BOOL hook_IGTabBarViewPointFixEnabled(void) {
 }
 static NSInteger hook_IGTabBarStyleForLauncherSet(NSInteger set) {
     if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return 1;
+    if ([SCIUtils getBoolPref:@"igt_homecoming"]) return 1;
     return orig_IGTabBarStyleForLauncherSet ? orig_IGTabBarStyleForLauncherSet(set) : set;
 }
+static BOOL hook_IGPrismDesignSystemEnabled(void) {
+    if ([SCIUtils getBoolPref:@"igt_prism"]) return YES;
+    return orig_IGPrismDesignSystemEnabled ? orig_IGPrismDesignSystemEnabled() : NO;
+}
+static BOOL hook_IGDirectNotesFriendMapEnabled(void) {
+    if ([SCIUtils getBoolPref:@"igt_directnotes_friendmap"]) return YES;
+    return orig_IGDirectNotesFriendMapEnabled ? orig_IGDirectNotesFriendMapEnabled() : NO;
+}
+static BOOL hook_IGDirectNotesEnableAudioNoteReplyType(void) {
+    if ([SCIUtils getBoolPref:@"igt_directnotes_audio_reply"]) return YES;
+    return orig_IGDirectNotesEnableAudioNoteReplyType ? orig_IGDirectNotesEnableAudioNoteReplyType() : NO;
+}
+static BOOL hook_IGDirectNotesEnableAvatarReplyTypes(void) {
+    if ([SCIUtils getBoolPref:@"igt_directnotes_avatar_reply"]) return YES;
+    return orig_IGDirectNotesEnableAvatarReplyTypes ? orig_IGDirectNotesEnableAvatarReplyTypes() : NO;
+}
+static BOOL hook_IGDirectNotesEnableGifsStickersReplyTypes(void) {
+    if ([SCIUtils getBoolPref:@"igt_directnotes_gifs_reply"]) return YES;
+    return orig_IGDirectNotesEnableGifsStickersReplyTypes ? orig_IGDirectNotesEnableGifsStickersReplyTypes() : NO;
+}
+static BOOL hook_IGDirectNotesEnablePhotoNoteReplyType(void) {
+    if ([SCIUtils getBoolPref:@"igt_directnotes_photo_reply"]) return YES;
+    return orig_IGDirectNotesEnablePhotoNoteReplyType ? orig_IGDirectNotesEnablePhotoNoteReplyType() : NO;
+}
+
+%hook IGUser
+- (BOOL)isEmployee {
+    if ([SCIUtils getBoolPref:@"igt_employee"]) return YES;
+    return %orig;
+}
+- (BOOL)isInternal {
+    if ([SCIUtils getBoolPref:@"igt_internal"]) return YES;
+    return %orig;
+}
+%end
+
+%hook IGMedia
+- (BOOL)isScreenshotBlockingEnabled {
+    if (![SCIUtils getBoolPref:@"igt_screenshot_block"]) return NO;
+    return %orig;
+}
+%end
+
+%hook IGDirectNotesExperimentHelper
+- (BOOL)isInExperiment:(id)name {
+    NSString *s = [name isKindOfClass:[NSString class]] ? (NSString *)name : @"";
+    NSString *lower = s.lowercaseString;
+    if ([lower containsString:@"friendmap"] && [SCIUtils getBoolPref:@"igt_directnotes_friendmap"]) return YES;
+    if ([lower containsString:@"audio"] && [SCIUtils getBoolPref:@"igt_directnotes_audio_reply"]) return YES;
+    if ([lower containsString:@"avatar"] && [SCIUtils getBoolPref:@"igt_directnotes_avatar_reply"]) return YES;
+    if (([lower containsString:@"gifs"] || [lower containsString:@"sticker"]) && [SCIUtils getBoolPref:@"igt_directnotes_gifs_reply"]) return YES;
+    if ([lower containsString:@"photo"] && [SCIUtils getBoolPref:@"igt_directnotes_photo_reply"]) return YES;
+    return %orig;
+}
+%end
 
 %ctor {
     // ObjC hooks for liquid glass buttons
@@ -892,19 +972,33 @@ static NSInteger hook_IGTabBarStyleForLauncherSet(NSInteger set) {
                         (IMP)new_expHelper_isHomeFeed, (IMP *)&orig_expHelper_isHomeFeed);
     }
 
-    // C function hooks for liquid glass tab bar / surfaces (fishhook)
-    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) {
-        int result = rebind_symbols((struct rebinding[]){
-            {"IGFloatingTabBarEnabled", (void *)hook_IGFloatingTabBarEnabled, (void **)&orig_IGFloatingTabBarEnabled},
-            {"IGTabBarDynamicSizingEnabled", (void *)hook_IGTabBarDynamicSizingEnabled, (void **)&orig_IGTabBarDynamicSizingEnabled},
-            {"IGTabBarEnhancedDynamicSizingEnabled", (void *)hook_IGTabBarEnhancedDynamicSizingEnabled, (void **)&orig_IGTabBarEnhancedDynamicSizingEnabled},
-            {"IGTabBarHomecomingWithFloatingTabEnabled", (void *)hook_IGTabBarHomecomingWithFloatingTabEnabled, (void **)&orig_IGTabBarHomecomingWithFloatingTabEnabled},
-            {"IGTabBarViewPointFixEnabled", (void *)hook_IGTabBarViewPointFixEnabled, (void **)&orig_IGTabBarViewPointFixEnabled},
-            {"IGTabBarStyleForLauncherSet", (void *)hook_IGTabBarStyleForLauncherSet, (void **)&orig_IGTabBarStyleForLauncherSet},
-        }, 6);
-        NSLog(@"[SCInsta] Liquid glass fishhook result=%d floating=%p dynamic=%p enhanced=%p homecoming=%p viewpoint=%p style=%p",
-              result, orig_IGFloatingTabBarEnabled, orig_IGTabBarDynamicSizingEnabled,
-              orig_IGTabBarEnhancedDynamicSizingEnabled, orig_IGTabBarHomecomingWithFloatingTabEnabled,
-              orig_IGTabBarViewPointFixEnabled, orig_IGTabBarStyleForLauncherSet);
-    }
+    // C function hooks for liquid glass / homecoming / prism / direct notes (fishhook)
+    int result = rebind_symbols((struct rebinding[]){
+        {"IGFloatingTabBarEnabled", (void *)hook_IGFloatingTabBarEnabled, (void **)&orig_IGFloatingTabBarEnabled},
+        {"IGTabBarDynamicSizingEnabled", (void *)hook_IGTabBarDynamicSizingEnabled, (void **)&orig_IGTabBarDynamicSizingEnabled},
+        {"IGTabBarEnhancedDynamicSizingEnabled", (void *)hook_IGTabBarEnhancedDynamicSizingEnabled, (void **)&orig_IGTabBarEnhancedDynamicSizingEnabled},
+        {"IGTabBarHomecomingWithFloatingTabEnabled", (void *)hook_IGTabBarHomecomingWithFloatingTabEnabled, (void **)&orig_IGTabBarHomecomingWithFloatingTabEnabled},
+        {"IGTabBarViewPointFixEnabled", (void *)hook_IGTabBarViewPointFixEnabled, (void **)&orig_IGTabBarViewPointFixEnabled},
+        {"IGTabBarStyleForLauncherSet", (void *)hook_IGTabBarStyleForLauncherSet, (void **)&orig_IGTabBarStyleForLauncherSet},
+        {"IGPrismDesignSystemEnabled", (void *)hook_IGPrismDesignSystemEnabled, (void **)&orig_IGPrismDesignSystemEnabled},
+        {"IGDirectNotesFriendMapEnabled", (void *)hook_IGDirectNotesFriendMapEnabled, (void **)&orig_IGDirectNotesFriendMapEnabled},
+        {"IGDirectNotesEnableAudioNoteReplyType", (void *)hook_IGDirectNotesEnableAudioNoteReplyType, (void **)&orig_IGDirectNotesEnableAudioNoteReplyType},
+        {"IGDirectNotesEnableAvatarReplyTypes", (void *)hook_IGDirectNotesEnableAvatarReplyTypes, (void **)&orig_IGDirectNotesEnableAvatarReplyTypes},
+        {"IGDirectNotesEnableGifsStickersReplyTypes", (void *)hook_IGDirectNotesEnableGifsStickersReplyTypes, (void **)&orig_IGDirectNotesEnableGifsStickersReplyTypes},
+        {"IGDirectNotesEnablePhotoNoteReplyType", (void *)hook_IGDirectNotesEnablePhotoNoteReplyType, (void **)&orig_IGDirectNotesEnablePhotoNoteReplyType},
+    }, 12);
+    NSLog(@"[SCInsta] RyukGram fishhook result=%d floating=%p dynamic=%p enhanced=%p homecoming=%p viewpoint=%p style=%p prism=%p notesFriendMap=%p notesAudio=%p notesAvatar=%p notesGIF=%p notesPhoto=%p",
+          result,
+          orig_IGFloatingTabBarEnabled,
+          orig_IGTabBarDynamicSizingEnabled,
+          orig_IGTabBarEnhancedDynamicSizingEnabled,
+          orig_IGTabBarHomecomingWithFloatingTabEnabled,
+          orig_IGTabBarViewPointFixEnabled,
+          orig_IGTabBarStyleForLauncherSet,
+          orig_IGPrismDesignSystemEnabled,
+          orig_IGDirectNotesFriendMapEnabled,
+          orig_IGDirectNotesEnableAudioNoteReplyType,
+          orig_IGDirectNotesEnableAvatarReplyTypes,
+          orig_IGDirectNotesEnableGifsStickersReplyTypes,
+          orig_IGDirectNotesEnablePhotoNoteReplyType);
 }
