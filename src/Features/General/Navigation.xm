@@ -91,6 +91,28 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
     return;
 }
 
+- (BOOL)isHomecomingEnabled {
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"]) return YES;
+    if ([SCIUtils getBoolPref:@"igt_homecoming"]) return YES;
+    return %orig;
+}
+- (void)setIsHomecomingEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)isHomecomingStoriesAccessFaceClusterEnabled {
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"] || [SCIUtils getBoolPref:@"igt_homecoming"]) return YES;
+    return %orig;
+}
+- (void)setIsHomecomingStoriesAccessFaceClusterEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)isHomecomingTapToPauseHiddenInPreview {
+    if ([SCIUtils getBoolPref:@"liquid_glass_surfaces"] || [SCIUtils getBoolPref:@"igt_homecoming"]) return YES;
+    return %orig;
+}
+- (void)setIsHomecomingTapToPauseHiddenInPreview:(BOOL)arg1 {
+    return;
+}
 - (BOOL)isTabSwipingEnabled {
     // Swipe lands on stripped tabs in messages-only.
     if ([SCIUtils getBoolPref:@"messages_only"]) return NO;
@@ -99,6 +121,62 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
     return %orig;
 }
 - (void)setIsTabSwipingEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)isDynamicTabStoryGridEnabled {
+    if ([SCIUtils getBoolPref:@"igt_dynamic_tab"]) return YES;
+    return %orig;
+}
+- (void)setIsDynamicTabStoryGridEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)isDynamicTabFullscreenSwitcherEnabled {
+    if ([SCIUtils getBoolPref:@"igt_dynamic_tab"]) return YES;
+    return %orig;
+}
+- (void)setIsDynamicTabFullscreenSwitcherEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)isReelsSecondEnabled {
+    if ([SCIUtils getBoolPref:@"igt_reels_first"]) return YES;
+    return %orig;
+}
+- (void)setIsReelsSecondEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)audioRampingOnSwipeEnabled {
+    if ([SCIUtils getBoolPref:@"igt_audio_ramping"]) return YES;
+    return %orig;
+}
+- (void)setAudioRampingOnSwipeEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)isFeedCullingOnStatusBarEnabled {
+    if ([SCIUtils getBoolPref:@"igt_feed_culling"]) return YES;
+    return %orig;
+}
+- (void)setIsFeedCullingOnStatusBarEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)isFeedDedupFromReelsOptimizationEnabled {
+    if ([SCIUtils getBoolPref:@"igt_feed_dedup"]) return YES;
+    return %orig;
+}
+- (void)setIsFeedDedupFromReelsOptimizationEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)isFriendsFeedSeeOlderPostsEnabled {
+    if ([SCIUtils getBoolPref:@"igt_friends_feed"]) return YES;
+    return %orig;
+}
+- (void)setIsFriendsFeedSeeOlderPostsEnabled:(BOOL)arg1 {
+    return;
+}
+- (BOOL)enablePullToCarrera {
+    if ([SCIUtils getBoolPref:@"igt_pull_to_carrera"]) return YES;
+    return %orig;
+}
+- (void)setEnablePullToCarrera:(BOOL)arg1 {
     return;
 }
 %end
@@ -116,4 +194,8 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
         }
     }
 }
+<<<<<<< HEAD
 %end
+=======
+%end
+>>>>>>> bef1fcf (Update merged RyukGram project)
