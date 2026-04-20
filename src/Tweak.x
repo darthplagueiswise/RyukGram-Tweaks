@@ -87,6 +87,7 @@ BOOL dmVisualMsgsViewedButtonEnabled = false;
         @"custom_note_themes": @(YES),
         @"disable_auto_unmuting_reels": @(NO),
         @"auto_scroll_reels_mode": @"off",
+        @"sci_exp_flags_enabled": @(NO),
         @"settings_shortcut": @(YES),
         @"doom_scrolling_reel_count": @(1),
         @"keep_seen_visual_local": @(NO),

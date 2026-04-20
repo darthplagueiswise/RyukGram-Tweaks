@@ -2,6 +2,7 @@
 #import "SCISettingsBackup.h"
 #import "SCIFakeLocationSettingsVC.h"
 #import "SCIExcludedChatsViewController.h"
+#import "SCIExpFlagsViewController.h"
 #import "../Features/StoriesAndMessages/SCIExcludedThreads.h"
 #import "../Features/StoriesAndMessages/SCIExcludedStoryUsers.h"
 #import "SCIExcludedStoryUsersViewController.h"
@@ -612,6 +613,22 @@
                                                                                icon:nil
                                                                              action:^(void) { [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"SCInstaFirstRun"]; [SCIUtils showRestartConfirmation];}
                                                 ],
+                                            ]
+                                        },
+                                        @{
+                                            @"header": @"Experimental flags",
+                                            @"rows": @[
+                                                [SCISetting switchCellWithTitle:@"Enable hooks" subtitle:@"Installs observers + overrides. Restart required." defaultsKey:@"sci_exp_flags_enabled" requiresRestart:YES],
+                                                [SCISetting buttonCellWithTitle:@"Experimental flags"
+                                                                       subtitle:@"Browse experiments, MC IDs, scanned names"
+                                                                           icon:[SCISymbol symbolWithName:@"flag.2.crossed"]
+                                                                         action:^(void) {
+                                                    SCIExpFlagsViewController *vc = [SCIExpFlagsViewController new];
+                                                    UIViewController *top = sciTopVC();
+                                                    UINavigationController *nav = top.navigationController ?: (UINavigationController *)top;
+                                                    if ([nav isKindOfClass:[UINavigationController class]]) [nav pushViewController:vc animated:YES];
+                                                    else [top presentViewController:[[UINavigationController alloc] initWithRootViewController:vc] animated:YES completion:nil];
+                                                }],
                                             ]
                                         }]
                 ],
