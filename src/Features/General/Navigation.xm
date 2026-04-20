@@ -194,8 +194,4 @@ NSArray *filterSurfacesArray(NSArray *surfaces) {
         }
     }
 }
-<<<<<<< HEAD
 %end
-=======
-%end
->>>>>>> bef1fcf (Update merged RyukGram project)
